@@ -63,7 +63,7 @@ services:
       - mcp-network
     
     depends_on:
-      - mcp-backend
+      - mcp-server
 
   # Frontend Web
   mcp-frontend:
