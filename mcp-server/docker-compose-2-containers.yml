@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # MCP SQL Server
+  mcp-server:
+    image: node:18-alpine
+    command: >
+      sh -c "
+        apk add --no-cache git python3 make g++ &&
+        git clone https://github.com/peuscategui/mcpefclocal.git /tmp/repo &&
+        cd /tmp/repo/mcp-server &&
+        npm install --only=production &&
+        node mcp-server.js
+      "
+    environment:
+      - DB_SERVER=${DB_SERVER}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Backend API
+  mcp-backend:
+    image: node:18-alpine
+    ports:
+      - "3001:3001"
+    command: >
+      sh -c "
+        apk add --no-cache git python3 make g++ &&
+        git clone https://github.com/peuscategui/mcpefclocal.git /tmp/repo &&
+        cd /tmp/repo/mcp-server/mcp-client-backend &&
+        npm install --only=production &&
+        sleep 30 &&
+        node server.js
+      "
+    environment:
+      - MCP_HOST=${MCP_HOST}
+      - MCP_PORT=${MCP_PORT}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PORT=${BACKEND_PORT}
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    depends_on:
+      - mcp-server
+
+networks:
+  mcp-network:
+    driver: bridge
+
