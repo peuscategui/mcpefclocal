@@ -79,7 +79,7 @@ services:
         npm run build &&
         cp -r .next/standalone/. /app/ &&
         cd /app &&
-        PORT=3003 node server.js
+        PORT=\$PORT node server.js
       "
     environment:
       - NODE_ENV=production
