@@ -1,0 +1,231 @@
+/* styles/custom-colors.css */
+/* Colores específicos del sistema */
+
+/* Importar Inter desde Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+
+:root {
+  /* Colores principales del sistema */
+  --header-color: #2F4050;
+  --sidebar-active: #27ae60;
+  --background-main: #f8f9fc;
+  --border-subtle: #e9ecef;
+  --text-secondary: #6c757d;
+  
+  /* Colores balanceados azul/verde */
+  --primary-blue: #2F4050;
+  --secondary-blue: #4a5568;
+  --accent-blue: #2d3748;
+  --success-green: #27ae60;
+  --warning-orange: #f39c12;
+  --danger-red: #e74c3c;
+  --info-blue: #2F4050;
+  
+  /* Colores adicionales para consistencia */
+  --text-primary: #2F4050;
+  --text-muted: #6c757d;
+  --success-color: #27ae60;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #2F4050;
+}
+
+/* Tipografía del sistema */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Títulos */
+.text-h1-primary {
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.text-h2-graficos {
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 900;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+/* Texto Estadísticas */
+.text-valor-grande {
+  font-size: 3rem; /* ~48px */
+  font-weight: 900;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.text-titulo-tarjeta {
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.text-descripcion {
+  font-size: 0.75rem; /* text-xs */
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* Textos Generales */
+.text-descripcion-pagina {
+  font-size: 1rem; /* text-base */
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.text-label {
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.text-secundario {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.text-muy-pequeno {
+  font-size: 0.75rem; /* text-xs */
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* Aplicar colores a elementos específicos */
+.bg-system-main {
+  background-color: var(--background-main);
+}
+
+.text-system-primary {
+  color: var(--text-primary);
+}
+
+.text-system-secondary {
+  color: var(--text-secondary);
+}
+
+.border-system-subtle {
+  border-color: var(--border-subtle);
+}
+
+.bg-system-success {
+  background-color: var(--success-color);
+}
+
+.text-system-success {
+  color: var(--success-color);
+}
+
+/* Estilos para componentes específicos */
+.dashboard-card {
+  background: white;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.kpi-card {
+  background: white;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.kpi-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.filter-container {
+  background-color: var(--background-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+}
+
+/* Estilos para botones del sistema */
+.btn-system-primary {
+  background-color: var(--success-color);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.btn-system-primary:hover {
+  background-color: rgba(39, 174, 96, 0.9);
+}
+
+.btn-system-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Estilos para inputs del sistema */
+.input-system {
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  background-color: white;
+  color: var(--text-primary);
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.input-system:focus {
+  outline: none;
+  border-color: var(--success-color);
+  box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.2);
+}
+
+/* Estilos para iconos del sistema */
+.icon-system-success {
+  color: var(--success-color);
+}
+
+.icon-system-primary {
+  color: var(--text-primary);
+}
+
+.icon-system-secondary {
+  color: var(--text-secondary);
+}
+
+/* Estilos para gráficos */
+.chart-container {
+  background: white;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para dropdowns */
+.dropdown-system {
+  background: white;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item-system {
+  padding: 0.5rem 0.75rem;
+  color: var(--text-primary);
+  transition: background-color 0.2s ease-in-out;
+}
+
+.dropdown-item-system:hover {
+  background-color: var(--background-main);
+}
+
+.dropdown-item-system.active {
+  background-color: var(--success-color);
+  color: white;
+}

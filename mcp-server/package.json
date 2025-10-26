@@ -1,0 +1,30 @@
+{
+  "name": "mcp-sql-server",
+  "version": "1.0.0",
+  "description": "MCP Server with Microsoft SQL Server connectivity",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "mssql": "^10.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "mcp",
+    "mssql",
+    "sql-server",
+    "database",
+    "server"
+  ],
+  "author": "Tu nombre",
+  "license": "MIT"
+}
