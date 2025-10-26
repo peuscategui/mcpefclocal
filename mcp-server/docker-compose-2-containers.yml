@@ -18,8 +18,8 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - MCP_HOST=0.0.0.0
-      - MCP_PORT=3000
+      - MCP_HOST=${MCP_LISTEN_HOST}
+      - MCP_PORT=${MCP_PORT}
     
     networks:
       - mcp-network
