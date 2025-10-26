@@ -240,7 +240,7 @@ class MCPTCPServer {
       
       const port = process.env.MCP_PORT || 3000;
       
-      const tcpServer = net.createServer((socket) => {
+      const tcpServer = net.createServer(async (socket) => {
         console.log('🔗 Cliente conectado al servidor MCP TCP');
         
         // Crear un transport personalizado para el socket TCP
