@@ -263,7 +263,7 @@ class MCPTCPServer {
         
         // Manejar datos entrantes
         let buffer = '';
-        socket.on('data', (data) => {
+        socket.on('data', async (data) => {
           buffer += data.toString();
           const lines = buffer.split('\n');
           buffer = lines.pop(); // Mantener la línea incompleta
@@ -272,7 +272,12 @@ class MCPTCPServer {
             if (line.trim()) {
               try {
                 const message = JSON.parse(line);
-                this.server.handleRequest(message);
+                try {
+                  const response = await this.server.request(message);
+                  socket.write(JSON.stringify(response) + '\n');
+                } catch (err) {
+                  console.error('❌ Error procesando mensaje:', err.message);
+                }
               } catch (err) {
                 console.error('❌ Error parseando mensaje:', err.message);
               }
