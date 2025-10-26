@@ -470,7 +470,7 @@ Enfócate en:
 
   async run() {
     const port = process.env.MCP_PORT || 3000;
-    const host = process.env.MCP_HOST || 'localhost';
+    const host = process.env.MCP_HOST || '0.0.0.0';
     
     // Crear servidor TCP personalizado
     const tcpServer = net.createServer((socket) => {
