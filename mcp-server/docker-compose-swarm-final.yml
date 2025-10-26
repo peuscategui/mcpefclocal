@@ -1,50 +1,117 @@
 version: '3.8'
 
 services:
-  mcp-sql-server:
-    image: node:18-alpine
+  # Backend API
+  mcp-backend:
+    image: mcp-backend:latest
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      # Database Configuration
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_ENCRYPT=true
+      - DB_TRUST_SERVER_CERTIFICATE=true
+      
+      # MCP Server Configuration
+      - MCP_HOST=mcp-sql-server
+      - MCP_PORT=3000
+      
+      # OpenAI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Server Configuration
+      - NODE_ENV=production
+      - PORT=3001
+      
+      # Logging
+      - LOG_LEVEL=info
+    
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
     deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
       resources:
         limits:
-          memory: 512M
+          cpus: '1'
+          memory: 1G
         reservations:
-          memory: 256M
-    command: >
-      sh -c "
-        echo '🚀 Iniciando MCP Server...' &&
-        apk add --no-cache git &&
-        echo '📦 Clonando repositorio...' &&
-        git clone https://github.com/peuscategui/mcpefc.git /tmp/repo &&
-        mkdir -p /app &&
-        cp -r /tmp/repo/* /app/ &&
-        rm -rf /tmp/repo &&
-        echo '📚 Instalando dependencias...' &&
-        cd /app &&
-        npm install --production &&
-        echo '🔌 Iniciando servidor MCP TCP...' &&
-        node mcp-tcp-fixed.js
-      "
+          cpus: '0.5'
+          memory: 512M
+    
+    networks:
+      - mcp-network
+
+  # Frontend Web
+  mcp-frontend:
+    image: mcp-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://192.168.40.197:3001
+      - PORT=3003
+      - HOSTNAME=0.0.0.0
+      
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    networks:
+      - mcp-network
+    
+    depends_on:
+      - mcp-backend
+
+  # MCP SQL Server
+  mcp-sql-server:
+    image: mcp-sql-server:latest
+    restart: unless-stopped
     environment:
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - MCP_PORT=3000
       - MCP_HOST=0.0.0.0
-      - LOG_LEVEL=${LOG_LEVEL}
-      - DB_ENCRYPT=${DB_ENCRYPT}
-      - DB_TRUST_SERVER_CERTIFICATE=${DB_TRUST_SERVER_CERTIFICATE}
-    ports:
-      - "3000:3000"
-    healthcheck:
-      test: ["CMD", "node", "-e", "console.log('Health check passed')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      - MCP_PORT=3000
+      - LOG_LEVEL=info
+      - DB_ENCRYPT=true
+      - DB_TRUST_SERVER_CERTIFICATE=true
+    
+    networks:
+      - mcp-network
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+networks:
+  mcp-network:
+    driver: bridge

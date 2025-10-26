@@ -3,9 +3,7 @@ version: '3.8'
 services:
   # Backend API
   mcp-backend:
-    build:
-      context: ./mcp-client-backend
-      dockerfile: Dockerfile
+    image: mcp-backend:latest
     container_name: mcp-backend
     restart: unless-stopped
     ports:
@@ -60,9 +58,7 @@ services:
 
   # Frontend Web
   mcp-frontend:
-    build:
-      context: ./mcp-client-web
-      dockerfile: Dockerfile
+    image: mcp-frontend:latest
     container_name: mcp-frontend
     restart: unless-stopped
     ports:
@@ -100,11 +96,9 @@ services:
       - "traefik.http.routers.mcp-frontend.rule=Host(`mcp.local`)"
       - "traefik.http.services.mcp-frontend.loadbalancer.server.port=3003"
 
-  # MCP SQL Server (Opcional - si necesitas ejecutarlo en Docker)
+  # MCP SQL Server
   mcp-sql-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: mcp-sql-server:latest
     container_name: mcp-sql-server
     restart: unless-stopped
     environment:
