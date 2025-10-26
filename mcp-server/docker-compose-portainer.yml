@@ -6,7 +6,6 @@ services:
     build:
       context: ./mcp-client-backend
       dockerfile: Dockerfile
-    restart: unless-stopped
     ports:
       - "3001:3001"
     environment:
@@ -57,7 +56,6 @@ services:
     build:
       context: ./mcp-client-web
       dockerfile: Dockerfile
-    restart: unless-stopped
     ports:
       - "3003:3003"
     environment:
@@ -93,7 +91,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: unless-stopped
     environment:
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
