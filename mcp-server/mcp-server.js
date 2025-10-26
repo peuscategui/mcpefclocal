@@ -33,14 +33,16 @@ class DatabaseMCPServer {
     
     // ⚠️ IMPORTANTE: Configura tu base de datos aquí
     this.dbConfig = {
-      server: process.env.DB_SERVER || '192.168.2.18',
+      server: process.env.DB_HOST || process.env.DB_SERVER || '192.168.2.18',
+      port: parseInt(process.env.DB_PORT) || 1433,
       database: process.env.DB_NAME || 'PRUEBA_MCP',
       user: process.env.DB_USER || 'MCP',
       password: process.env.DB_PASSWORD || 'm_25_9e_pe1_',
       options: {
-        encrypt: true,
-        trustServerCertificate: true,
-        enableArithAbort: true
+        encrypt: process.env.DB_ENCRYPT === 'true' || true,
+        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true' || true,
+        enableArithAbort: true,
+        useUTC: false
       }
     };
     
