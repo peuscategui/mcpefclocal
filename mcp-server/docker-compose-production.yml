@@ -21,7 +21,7 @@ services:
       - DB_TRUST_SERVER_CERTIFICATE=true
       
       # MCP Server Configuration
-      - MCP_HOST=localhost
+      - MCP_HOST=mcp-sql-server
       - MCP_PORT=3000
       
       # OpenAI Configuration
@@ -69,7 +69,7 @@ services:
       - "3003:3003"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://192.168.2.18:3001
+      - NEXT_PUBLIC_API_URL=http://192.168.40.197:3001
       - PORT=3003
       - HOSTNAME=0.0.0.0
       
