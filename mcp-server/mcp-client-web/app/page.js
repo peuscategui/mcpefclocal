@@ -66,7 +66,8 @@ export default function HomePage() {
       const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('currentUser') || 'admin' : 'admin';
       
       // Llamar directamente al backend
-      const response = await fetch('http://localhost:3001/api/chat', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

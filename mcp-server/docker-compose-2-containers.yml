@@ -77,7 +77,8 @@ services:
         cd /tmp/repo/mcp-server/mcp-client-web &&
         npm install &&
         npm run build &&
-        npm run start
+        cd .next/standalone &&
+        PORT=3003 node server.js
       "
     environment:
       - NODE_ENV=production
