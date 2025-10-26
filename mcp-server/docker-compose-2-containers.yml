@@ -78,7 +78,6 @@ services:
         npm install &&
         npm run build &&
         cp -r .next/standalone/. /app/ &&
-        cp -r public /app/ &&
         cd /app &&
         PORT=3003 node server.js
       "
