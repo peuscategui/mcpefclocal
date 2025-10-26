@@ -41,8 +41,10 @@ export default function HomePage() {
   };
 
   const handleUserChange = (userId) => {
-    localStorage.setItem('currentUser', userId);
-    window.location.reload(); // Recargar para aplicar el cambio
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('currentUser', userId);
+      window.location.reload(); // Recargar para aplicar el cambio
+    }
   };
 
   const handleSelectConversation = (conversation) => {
@@ -61,7 +63,7 @@ export default function HomePage() {
   const handleNewMessage = async (message, conversationId) => {
     try {
       // ⚡ Seleccionar usuario actual (por defecto: 'admin')
-      const currentUserId = localStorage.getItem('currentUser') || 'admin';
+      const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('currentUser') || 'admin' : 'admin';
       
       // Llamar directamente al backend
       const response = await fetch('http://localhost:3001/api/chat', {
@@ -146,7 +148,7 @@ export default function HomePage() {
             
             <select
               onChange={(e) => handleUserChange(e.target.value)}
-              defaultValue={localStorage.getItem('currentUser') || 'admin'}
+              defaultValue={'admin'}
               className="px-3 py-1 border border-gray-300 rounded-lg text-sm bg-white"
             >
               <option value="admin">👤 Administrador</option>
