@@ -21,6 +21,9 @@ class MCPClient extends EventEmitter {
       try {
         this.socket = new net.Socket();
         
+        // ⚠️ DEBUG: Ver qué hostname estamos usando
+        console.log(`🔍 DEBUG - Intento de conexión MCP: host="${this.host}", port=${this.port}`);
+        
         // Forzar IPv4 para evitar problemas con ::1 (IPv6 localhost)
         const options = {
           port: this.port,
