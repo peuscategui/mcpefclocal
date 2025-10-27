@@ -21,7 +21,14 @@ class MCPClient extends EventEmitter {
       try {
         this.socket = new net.Socket();
         
-        this.socket.connect(this.port, this.host, () => {
+        // Forzar IPv4 para evitar problemas con ::1 (IPv6 localhost)
+        const options = {
+          port: this.port,
+          host: this.host,
+          family: 4  // IPv4
+        };
+        
+        this.socket.connect(options, () => {
           console.log(`✅ Conectado al servidor MCP en ${this.host}:${this.port}`);
           this.isConnected = true;
           this.reconnectAttempts = 0;
