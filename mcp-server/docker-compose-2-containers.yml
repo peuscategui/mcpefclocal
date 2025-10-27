@@ -94,6 +94,7 @@ services:
       - "traefik.http.routers.mcp-frontend.rule=Host(`mcpcomercial.efc.com.pe`)"
       - "traefik.http.routers.mcp-frontend.entrypoints=websecure"
       - "traefik.http.routers.mcp-frontend.tls.certresolver=le"
+      - "traefik.http.routers.mcp-frontend.service=mcp-frontend"
       - "traefik.http.services.mcp-frontend.loadbalancer.server.port=3003"
       - "traefik.docker.network=traefik_public"
 
