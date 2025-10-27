@@ -133,6 +133,7 @@ export const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3003',  // Puerto del frontend
       'http://localhost:3000',
+      'http://192.168.40.197:3003',  // Frontend en producción
       process.env.CORS_ORIGIN
     ].filter(Boolean);
     
