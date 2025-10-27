@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 
 // Importar rutas
 import authRoutes from './routes/auth.js';
-import chatRoutes from './routes/chat.js';
+import chatRoutes, { setMCPClient, initializeServices } from './routes/chat.js';
 
 // Importar middleware
 import { 
@@ -46,6 +46,13 @@ class MCPServer {
       await this.mcpClient.connect();
       await this.mcpClient.initialize();
       console.log('✅ Cliente MCP conectado');
+      
+      // Compartir el cliente MCP con las rutas de chat
+      setMCPClient(this.mcpClient);
+      console.log('✅ Cliente MCP compartido con rutas de chat');
+      
+      // Inicializar servicios de chat (DB para historial)
+      await initializeServices();
       
       // Configurar middleware
       this.setupMiddleware();

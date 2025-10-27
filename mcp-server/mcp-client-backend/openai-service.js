@@ -3,17 +3,21 @@ import OpenAI from 'openai';
 import MCPClient from './mcp-client.js';
 
 class OpenAIService {
-  constructor() {
+  constructor(mcpClient = null) {
     this.client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY 
     });
     this.model = 'gpt-4-turbo-preview';
-    this.mcpClient = null;
+    this.mcpClient = mcpClient;
   }
 
   async getMCPClient() {
     if (!this.mcpClient) {
-      this.mcpClient = new MCPClient();
+      console.warn('⚠️ OpenAIService: No hay MCPClient inyectado, creando uno nuevo');
+      this.mcpClient = new MCPClient(
+        process.env.MCP_HOST || 'localhost',
+        process.env.MCP_PORT || 3000
+      );
       await this.mcpClient.connect();
     }
     return this.mcpClient;

@@ -33,22 +33,31 @@ const INTENCIONES_COMUNES = {
 };
 
 const router = express.Router();
-const mcpClient = new MCPClient(process.env.MCP_HOST, process.env.MCP_PORT);
-const openaiService = new OpenAIService();
+
+// ⚠️ Nota: Estos servicios se inicializan cuando se importa el módulo
+// Los valores de estas variables están disponibles desde server.js
 const dbService = new DatabaseService();  // ← HABILITADO
 
-// Inicializar servicios
-// ⚠️ SOLO MODE: Intentar conectar a BD de usuarios/conversaciones
-try {
-  await dbService.connect();
-  console.log('✅ Servicio de historial habilitado');
-} catch (error) {
-  console.warn('⚠️ Servicio de historial NO disponible (permisos insuficientes):', error.message);
-  console.log('ℹ️ El sistema funcionará sin historial de conversaciones');
+// Funciones de inicialización (se llaman desde server.js)
+let mcpClient = null;
+let openaiService = null;
+
+export function setMCPClient(client) {
+  mcpClient = client;
+  openaiService = new OpenAIService(client);  // Pasar el cliente compartido
 }
 
-await mcpClient.connect();
-await mcpClient.initialize();
+// Inicializar servicios de base de datos (conexión retrasada hasta que se use)
+export async function initializeServices() {
+  // ⚠️ SOLO MODE: Intentar conectar a BD de usuarios/conversaciones
+  try {
+    await dbService.connect();
+    console.log('✅ Servicio de historial habilitado');
+  } catch (error) {
+    console.warn('⚠️ Servicio de historial NO disponible (permisos insuficientes):', error.message);
+    console.log('ℹ️ El sistema funcionará sin historial de conversaciones');
+  }
+}
 
 // Esquemas de validación
 const chatSchema = Joi.object({
