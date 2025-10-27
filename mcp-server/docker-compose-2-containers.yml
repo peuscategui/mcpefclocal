@@ -97,6 +97,12 @@ services:
       - "traefik.http.routers.mcp-frontend.service=mcp-frontend"
       - "traefik.http.services.mcp-frontend.loadbalancer.server.port=3003"
       - "traefik.docker.network=traefik_public"
+      # Add HTTP to HTTPS redirect
+      - "traefik.http.routers.mcp-frontend-http.rule=Host(`mcpcomercial.efc.com.pe`)"
+      - "traefik.http.routers.mcp-frontend-http.entrypoints=web"
+      - "traefik.http.routers.mcp-frontend-http.middlewares=mcp-frontend-https-redirect"
+      - "traefik.http.middlewares.mcp-frontend-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.mcp-frontend-https-redirect.redirectscheme.permanent=true"
 
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "3003"]
