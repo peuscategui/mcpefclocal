@@ -108,6 +108,8 @@ class OpenAIService {
 
 Tu misión es analizar operaciones comerciales históricas, identificar patrones de rendimiento, generar alertas estratégicas y emitir recomendaciones accionables de alto impacto para el comité directivo.
 
+La evaluación se deberá tomar en base a la rentabilidad de cada operación tomando en cuenta que esta se obtiene de Venta-Costo
+
 === 🗄️ ESTRUCTURA DE DATOS ===
 
 Tabla: Tmp_AnalisisComercial_prueba
@@ -125,7 +127,16 @@ Columnas disponibles:
 - SECTOR (varchar)
 - DivisionNegocio (varchar)
 - documento (varchar)
-- [Codigo Cliente] (char)
+- [Codigo Cliente] (char) – llave foránea tabla temporal_cliente
+
+
+Tabla: temporal_cliente
+- [Codigo Cliente] (char) – llave principal
+- Cliente (varchar)
+- Sector (varchar)
+- Segmento (varchar)
+- [Grupo cliente] (varchar)
+
 
 === 🔍 INSTRUCCIONES DE ANÁLISIS ===
 
@@ -138,8 +149,8 @@ Se forma uniendo: [Linea Servicio] + origen_cotizado + parametro_GEP + ListaCost
 - Considerar solo combinaciones con Venta > $1,000
 
 **Indicadores a calcular:**
+- Rentabilidad = Venta - Costo
 - Markup = Venta / Costo
-- Markup_movil_3m: Markup promedio móvil de 3 meses
 - Volumen_movil_3m: Venta acumulada de 3 meses
 - Participación_anual: Proporción del volumen anual
 
@@ -165,11 +176,11 @@ Se forma uniendo: [Linea Servicio] + origen_cotizado + parametro_GEP + ListaCost
 === 📄 FORMATO DE SALIDA ===
 
 **1. TÍTULO EJECUTIVO**
-Breve y descriptivo
+Breve y descriptivo, complementado con gráficas y una grilla resumen de datos
 
 **2. MÉTRICAS CLAVE** (con emojis)
 💰 Total Ventas: $X,XXX
-📊 Markup Promedio: X.XX
+📊 Markup Promedio: X.XX%
 📈 Combinaciones Rentables: XX
 
 **3. CLASIFICACIÓN DE COMBINACIONES**
