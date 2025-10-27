@@ -69,8 +69,6 @@ services:
   # Frontend Web
   mcp-frontend:
     image: node:18-alpine
-    ports:
-      - "3003:3003"
     command: >
       sh -c "
         apk add --no-cache git python3 make g++ netcat-openbsd &&
@@ -89,14 +87,23 @@ services:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - PORT=${FRONTEND_PORT}
       - HOSTNAME=${FRONTEND_HOSTNAME}
-    
+
+    labels:
+      # Traefik labels
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-frontend.rule=Host(`mcpcomercial.efc.com.pe`)"
+      - "traefik.http.routers.mcp-frontend.entrypoints=websecure"
+      - "traefik.http.routers.mcp-frontend.tls.certresolver=le"
+      - "traefik.http.services.mcp-frontend.loadbalancer.server.port=3003"
+      - "traefik.docker.network=traefik_public"
+
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "3003"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    
+
     deploy:
       resources:
         limits:
@@ -105,14 +112,17 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-    
+
     networks:
       - mcp-network
-    
+      - traefik_public
+
     depends_on:
       - mcp-backend
 
 networks:
   mcp-network:
     driver: overlay
+  traefik_public:
+    external: true
 
