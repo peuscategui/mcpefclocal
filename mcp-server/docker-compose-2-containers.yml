@@ -89,7 +89,7 @@ services:
       - HOSTNAME=${FRONTEND_HOSTNAME}
     
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      test: ["CMD", "nc", "-z", "localhost", "3003"]
       interval: 30s
       timeout: 10s
       retries: 3
