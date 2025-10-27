@@ -196,12 +196,12 @@ class MCPServer {
     try {
       await this.initialize();
       
-      this.server = this.app.listen(this.port, () => {
+      this.server = this.app.listen(this.port, '0.0.0.0', () => {
         console.log(`🚀 Servidor MCP Backend iniciado en puerto ${this.port}`);
-        console.log(`📍 Health check: http://localhost:${this.port}/health`);
-        console.log(`📍 API Info: http://localhost:${this.port}/info`);
-        console.log(`📍 Auth endpoints: http://localhost:${this.port}/api/auth`);
-        console.log(`📍 Chat endpoints: http://localhost:${this.port}/api`);
+        console.log(`📍 Health check: http://0.0.0.0:${this.port}/health`);
+        console.log(`📍 API Info: http://0.0.0.0:${this.port}/info`);
+        console.log(`📍 Auth endpoints: http://0.0.0.0:${this.port}/api/auth`);
+        console.log(`📍 Chat endpoints: http://0.0.0.0:${this.port}/api`);
         
         // Validar configuración
         this.validateConfiguration();
