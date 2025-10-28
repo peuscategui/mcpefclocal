@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 // Importar rutas
 import authRoutes from './routes/auth.js';
 import chatRoutes, { setMCPClient, initializeServices } from './routes/chat.js';
+import promptRoutes, { setPromptService } from './routes/prompts.js';
 
 // Importar middleware
 import { 
@@ -40,8 +41,8 @@ class MCPServer {
       console.log('🚀 Iniciando servidor MCP Backend...');
       
       // Conectar a servicios
-      // await this.dbService.connect();  // ← Comentado para modo sin autenticación
-      // console.log('✅ Base de datos conectada');  // ← Comentado para modo sin autenticación
+      await this.dbService.connect();
+      console.log('✅ Base de datos conectada');
       
       await this.mcpClient.connect();
       await this.mcpClient.initialize();
@@ -53,6 +54,12 @@ class MCPServer {
       
       // Inicializar servicios de chat (DB para historial)
       await initializeServices();
+      
+      // Compartir PromptService con las rutas de prompts si DB está disponible
+      if (this.dbService.isConnected && this.dbService.promptService) {
+        setPromptService(this.dbService.promptService);
+        console.log('✅ PromptService compartido con rutas de prompts');
+      }
       
       // Configurar middleware
       this.setupMiddleware();
@@ -160,6 +167,7 @@ class MCPServer {
     // Rutas de API
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api', chatRoutes);
+    this.app.use('/api/prompts', promptRoutes);
 
     // Ruta 404
     this.app.use('*', (req, res) => {

@@ -44,7 +44,8 @@ let openaiService = null;
 
 export function setMCPClient(client) {
   mcpClient = client;
-  openaiService = new OpenAIService(client);  // Pasar el cliente compartido
+  // Pasar el cliente compartido Y el servicio de BD para prompts
+  openaiService = new OpenAIService(client, dbService);
 }
 
 // Inicializar servicios de base de datos (conexión retrasada hasta que se use)
@@ -53,9 +54,15 @@ export async function initializeServices() {
   try {
     await dbService.connect();
     console.log('✅ Servicio de historial habilitado');
+    
+    // Re-crear OpenAIService con el dbService ahora conectado
+    if (mcpClient) {
+      openaiService = new OpenAIService(mcpClient, dbService);
+      console.log('✅ OpenAIService actualizado con acceso a prompts de BD');
+    }
   } catch (error) {
     console.warn('⚠️ Servicio de historial NO disponible (permisos insuficientes):', error.message);
-    console.log('ℹ️ El sistema funcionará sin historial de conversaciones');
+    console.log('ℹ️ El sistema funcionará sin historial de conversaciones ni prompts de BD');
   }
 }
 
@@ -955,14 +962,32 @@ GROUP BY YEAR(fecha), MONTH(fecha)`;
 - Mes anterior (último mes): ${contextoTemporal.mes_anterior} (${contextoTemporal.nombre_mes_anterior} ${contextoTemporal.año_mes_anterior})
 
 ## 🗄️ ESTRUCTURA DE LA BASE DE DATOS
-Tabla principal: Tmp_AnalisisComercial_prueba
 
-Columnas:
-- fecha (DATETIME): Fecha de la transacción
-- venta (DECIMAL(18,2)): Monto de venta
-- cliente (VARCHAR(255)): Nombre del cliente
-- producto (VARCHAR(255)): Producto/servicio vendido
-- sector (VARCHAR(100)): Sector comercial
+### Tabla: Tmp_AnalisisComercial_prueba
+- mes, año, Fecha (datetime) - Fecha de la transacción
+- Venta (numeric) - Monto de la operación
+- Costo (numeric) - Costo de la operación
+- Markup (calculado) = Venta / Costo
+- [Linea Servicio] (varchar) - Línea de servicio
+- origen_cotizado (varchar)
+- parametro_GEP (varchar) - SI/NO
+- ListaCostoEFC (varchar) - SI/NO
+- Rango_Operativo (varchar)
+- SECTOR (varchar) - Sector comercial
+- DivisionNegocio (varchar)
+- documento (varchar)
+- [Codigo Cliente] (char) - Llave foránea tabla temporal_cliente
+
+### Tabla: temporal_cliente
+- [Codigo Cliente] (char) - Llave principal
+- Cliente (varchar) - Nombre del cliente
+- Sector (varchar)
+- Segmento (varchar)
+- [Grupo cliente] (varchar)
+
+### FÓRMULAS IMPORTANTES
+- Rentabilidad = Venta - Costo
+- Markup = Venta / Costo
 
 ## ⚡ REGLAS ESTRICTAS PARA GENERAR SQL
 
@@ -1081,6 +1106,70 @@ GROUP BY YEAR(fecha), MONTH(fecha)
 ORDER BY Año, MesNumero
 \`\`\`
 
+#### Para "clientes con menor rentabilidad del sector Minería":
+\`\`\`sql
+SELECT TOP 20
+    c.Cliente,
+    c.Sector,
+    SUM(t.Venta) as TotalVenta,
+    SUM(t.Costo) as TotalCosto,
+    SUM(t.Venta - t.Costo) as Rentabilidad,
+    CASE 
+      WHEN SUM(t.Costo) > 0 THEN SUM(t.Venta) / SUM(t.Costo)
+      ELSE 0
+    END as Markup,
+    COUNT(*) as NumOperaciones
+FROM Tmp_AnalisisComercial_prueba t
+INNER JOIN temporal_cliente c ON t.[Codigo Cliente] = c.[Codigo Cliente]
+WHERE c.Sector LIKE '%Minería%'
+  OR t.SECTOR LIKE '%Minería%'
+GROUP BY c.Cliente, c.Sector
+HAVING SUM(t.Venta) > 0
+ORDER BY Rentabilidad ASC
+\`\`\`
+
+#### Para "clientes más rentables":
+\`\`\`sql
+SELECT TOP 20
+    c.Cliente,
+    c.Sector,
+    SUM(t.Venta) as TotalVenta,
+    SUM(t.Costo) as TotalCosto,
+    SUM(t.Venta - t.Costo) as Rentabilidad,
+    CASE 
+      WHEN SUM(t.Costo) > 0 THEN SUM(t.Venta) / SUM(t.Costo)
+      ELSE 0
+    END as Markup,
+    COUNT(*) as NumOperaciones
+FROM Tmp_AnalisisComercial_prueba t
+INNER JOIN temporal_cliente c ON t.[Codigo Cliente] = c.[Codigo Cliente]
+GROUP BY c.Cliente, c.Sector
+HAVING SUM(t.Venta) > 0
+ORDER BY Rentabilidad DESC
+\`\`\`
+
+#### Para "detalle de operaciones por cliente y sector":
+\`\`\`sql
+SELECT TOP 100
+    c.Cliente,
+    c.Sector,
+    t.Fecha,
+    t.[Linea Servicio],
+    t.Venta,
+    t.Costo,
+    (t.Venta - t.Costo) as Rentabilidad,
+    CASE 
+      WHEN t.Costo > 0 THEN t.Venta / t.Costo
+      ELSE 0
+    END as Markup,
+    t.documento
+FROM Tmp_AnalisisComercial_prueba t
+INNER JOIN temporal_cliente c ON t.[Codigo Cliente] = c.[Codigo Cliente]
+WHERE c.Sector LIKE '%[sector_a_filtrar]%'
+  OR t.SECTOR LIKE '%[sector_a_filtrar]%'
+ORDER BY (t.Venta - t.Costo) ASC
+\`\`\`
+
 ### 3. Validación de Datos
 - Si el resultado está vacío, INFORMAR que no hay datos para ese periodo
 - Si hay ventas negativas, explicar que son devoluciones/notas de crédito
@@ -1110,22 +1199,32 @@ Enero=1, Febrero=2, Marzo=3, Abril=4, Mayo=5, Junio=6, Julio=7, Agosto=8, Septie
 - NUNCA inventes datos si no existen
 - NUNCA uses >= DATEADD(MONTH, -1, GETDATE()) para "último mes" (esto da los últimos 30 días, NO el mes anterior)
 
-RESPONDE SOLO CON EL SQL, SIN EXPLICACIONES.`;
+## 📝 INSTRUCCIONES DE GENERACIÓN
+1. Si la consulta coincide EXACTAMENTE con un ejemplo de arriba, úsalo tal cual
+2. Si la consulta es SIMILAR a un ejemplo, ADÁPTALO manteniendo la estructura
+3. Para análisis de rentabilidad, SIEMPRE incluye: Cliente, Sector, Venta, Costo, Rentabilidad, Markup
+4. Usa INNER JOIN con temporal_cliente cuando necesites información del cliente
+5. Usa ORDER BY ASC para "menor rentabilidad" y DESC para "mayor rentabilidad"
+6. Aplica filtros WHERE basándote en las palabras clave del usuario (Minería, Energía, etc.)
+
+RESPONDE SOLO CON EL SQL, SIN EXPLICACIONES NI COMENTARIOS.`;
 
          const sqlPrompt = `${SYSTEM_PROMPT}
 
 ${mensajeEnriquecido}
 
-Genera el SQL apropiado copiando EXACTAMENTE uno de los ejemplos de arriba.`;
+Genera el SQL apropiado basándote en los ejemplos de arriba. 
+Si la consulta es sobre rentabilidad por cliente o sector, usa los ejemplos de análisis de clientes.
+Si es sobre ventas por periodo, usa los ejemplos temporales.`;
 
-          // ⚡ CRÍTICO: temperature = 0 para máxima consistencia en generación de SQL
+          // ⚡ Temperature = 0.3 para consistencia con flexibilidad para adaptar ejemplos
           const sqlResponse = await openaiService.chat(sqlPrompt, [], {
-            temperature: 0,
+            temperature: 0.3,
             model: 'gpt-4-turbo-preview'
           });
           sqlQuery = sqlResponse.content.trim();
           
-          console.log('🌡️ Temperature usada: 0 (máxima consistencia)');
+          console.log('🌡️ Temperature usada: 0.3 (consistencia con flexibilidad)');
           
           // Limpiar markdown si existe
           sqlQuery = sqlQuery.replace(/```sql\n?/g, '').replace(/```\n?/g, '').trim();

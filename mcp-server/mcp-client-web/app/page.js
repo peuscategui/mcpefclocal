@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { chatAPI } from '@/lib/api-client';
 import ChatInterface from '@/components/ChatInterface';
 import ConversationSidebar from '@/components/ConversationSidebar';
-import { Menu, X, Database, User } from 'lucide-react';
+import { Menu, X, Database, User, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function HomePage() {
@@ -142,6 +142,15 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* Botón de Admin (solo para admin) */}
+            <button
+              onClick={() => router.push('/admin/prompts')}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-blue-600 transition"
+              title="Administrar Prompts"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <User className="w-4 h-4" />
               <span>{user?.name}</span>

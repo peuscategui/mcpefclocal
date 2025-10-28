@@ -1,6 +1,7 @@
 // Servicio de base de datos para usuarios y conversaciones
 import sql from 'mssql';
 import dotenv from 'dotenv';
+import PromptService from './prompt-service.js';
 
 dotenv.config();
 
@@ -8,6 +9,7 @@ class DatabaseService {
   constructor() {
     this.pool = null;
     this.isConnected = false;
+    this.promptService = null;
   }
 
   async connect() {
@@ -35,7 +37,12 @@ class DatabaseService {
 
       this.pool = await sql.connect(config);
       this.isConnected = true;
+      
+      // Inicializar PromptService con el mismo pool
+      this.promptService = new PromptService(this.pool);
+      
       console.log('✅ Conectado a SQL Server para usuarios/conversaciones');
+      console.log('✅ PromptService inicializado');
     } catch (error) {
       console.error('❌ Error conectando a SQL Server:', error.message);
       this.isConnected = false;
