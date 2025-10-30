@@ -7,7 +7,7 @@ import DashboardChart from './DashboardChart';
 import KPICards from './KPICards';
 import MonthlyAnalysis from './MonthlyAnalysis';
 import ComparativeTable from './ComparativeTable';
-import VisualizacionAdaptativa from './VisualizacionAdaptativa';
+import VisualizacionEjecutiva from './VisualizacionEjecutiva';
 import { Send, Loader2, Database, Brain } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -97,11 +97,14 @@ export default function ChatInterface({
       // Log para debugging
       console.log('📦 Response completa del backend:', response);
       console.log('📊 AssistantMsg que se guardará:', assistantMsg);
+      console.log('🔍 DataPreview:', response.dataPreview);
+      console.log('🎨 Metadata completa:', response.metadata);
       
       if (response.metadata?.visualizacion) {
         console.log('✅ Metadata de visualización recibida:', {
           tipo_analisis: response.metadata.tipo_analisis,
           periodo_unico: response.metadata.visualizacion.periodo_unico,
+          cantidad_periodos: response.metadata.visualizacion.cantidad_periodos,
           visualizaciones: Object.keys(response.metadata.visualizacion.visualizaciones_recomendadas)
             .filter(k => response.metadata.visualizacion.visualizaciones_recomendadas[k])
         });
@@ -177,9 +180,24 @@ export default function ChatInterface({
             <div key={message.id}>
               <MessageBubble message={message} />
               
-              {/* Dashboard Ejecutivo - DESHABILITADO */}
-              {/* ⚡ VISUALIZACIONES DESHABILITADAS POR SOLICITUD DEL USUARIO */}
-              {/* Solo se muestra el texto de respuesta en MessageBubble */}
+              {/* ⚡ NO mostrar visualizaciones ni tablas si requiere aclaración */}
+              {!message.needsClarification && (
+                <>
+                  {/* ⚡ VISUALIZACIONES EJECUTIVAS ACTIVADAS */}
+                  {message.role === 'assistant' && message.metadata?.visualizacion && (
+                    <VisualizacionEjecutiva metadata={message.metadata.visualizacion} />
+                  )}
+                  
+                  {/* Tabla de datos si está disponible - SIEMPRE mostrar si existe dataPreview */}
+                  {message.role === 'assistant' && message.dataPreview && (
+                    <div className="mt-4">
+                      <DataTable 
+                        data={message.dataPreview.data ? message.dataPreview : { data: message.dataPreview }} 
+                      />
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ))
         )}

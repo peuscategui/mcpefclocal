@@ -84,8 +84,23 @@ export default function HomePage() {
       
       if (data.success) {
         // ⚡ IMPORTANTE: Retornar TODA la respuesta con metadata incluida
-        console.log('📦 Retornando data.response:', data.response);
-        return data.response;
+        // Si data.response es un string, usar content; si es un objeto, expandirlo
+        const responseContent = typeof data.response === 'string' 
+          ? data.response 
+          : (data.response?.content || data.response);
+        
+        const fullResponse = {
+          content: responseContent,
+          metadata: data.metadata,  // ✅ Incluir metadata que viene separada
+          // ✅ Mapear flags de aclaración desde metadata al nivel superior para compatibilidad
+          needsClarification: data.metadata?.needsClarification || false,
+          clarificationType: data.metadata?.clarificationType || null
+        };
+        console.log('📦 Retornando respuesta completa con metadata:', fullResponse);
+        console.log('🎨 Metadata de visualización:', data.metadata?.visualizacion);
+        console.log('🔍 needsClarification:', fullResponse.needsClarification);
+        console.log('🔍 clarificationType:', fullResponse.clarificationType);
+        return fullResponse;
       } else {
         throw new Error(data.error || 'Error en la respuesta del servidor');
       }

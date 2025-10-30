@@ -14,7 +14,7 @@ class OpenAIService {
 
   async getMCPClient() {
     if (!this.mcpClient) {
-      console.warn('ÔÜá´©Å OpenAIService: No hay MCPClient inyectado, creando uno nuevo');
+      console.warn('ï¿½ï¿½á´©ï¿½ OpenAIService: No hay MCPClient inyectado, creando uno nuevo');
       this.mcpClient = new MCPClient(
         process.env.MCP_HOST || 'localhost',
         process.env.MCP_PORT || 3000
@@ -34,130 +34,43 @@ class OpenAIService {
     try {
       // Verificar si hay servicio de BD disponible
       if (this.dbService && this.dbService.isConnected && this.dbService.promptService) {
-        console.log(`­ƒöì Buscando prompt tipo='${promptType}', perfil='${userProfile}' en BD...`);
+        console.log(`ï¿½ï¿½ï¿½ï¿½ Buscando prompt tipo='${promptType}', perfil='${userProfile}' en BD...`);
         
         const content = await this.dbService.promptService.getActivePrompt(promptType, userProfile);
         
         if (content) {
-          console.log(`Ô£à Prompt cargado desde BD (${content.length} caracteres)`);
+          console.log(`Ô£ï¿½ Prompt cargado desde BD (${content.length} caracteres)`);
           return content;
         } else {
-          console.warn(`ÔÜá´©Å No se encontr+¦ prompt activo en BD, usando fallback hardcodeado`);
+          console.warn(`ï¿½ï¿½á´©ï¿½ No se encontr+ï¿½ prompt activo en BD, usando fallback hardcodeado`);
         }
       } else {
-        console.warn('ÔÜá´©Å Servicio de BD no disponible, usando prompt hardcodeado');
+        console.warn('ï¿½ï¿½á´©ï¿½ Servicio de BD no disponible, usando prompt hardcodeado');
       }
     } catch (error) {
-      console.error('ÔØî Error cargando prompt desde BD:', error.message);
-      console.warn('ÔÜá´©Å Usando prompt hardcodeado como fallback');
+      console.error('ï¿½ï¿½ï¿½ Error cargando prompt desde BD:', error.message);
+      console.warn('ï¿½ï¿½á´©ï¿½ Usando prompt hardcodeado como fallback');
     }
     
     return this.getDefaultPrompt();
   }
 
   /**
-   * Prompt por defecto (fallback)
-   * @returns {string} Prompt hardcodeado
+   * Prompt por defecto (fallback) - SOLO para emergencias
+   * âš ï¸ Este prompt NO deberÃ­a usarse en producciÃ³n normal.
+   * Las reglas de negocio deben estar en la BD (CAPA 3).
+   * 
+   * @returns {string} Prompt mÃ­nimo de emergencia
    */
   getDefaultPrompt() {
-    return `Eres un analista comercial senior con m+ís de 50 a+¦os de experiencia acumulada en sectores estrat+®gicos como miner+¡a, energ+¡a, agroindustria, industria y construcci+¦n.
+    return `âš ï¸ ADVERTENCIA: No se pudieron cargar las reglas de negocio desde la base de datos.
 
-Tu misi+¦n es analizar operaciones comerciales hist+¦ricas, identificar patrones de rendimiento, generar alertas estrat+®gicas y emitir recomendaciones accionables de alto impacto para el comit+® directivo.
+Por favor, ejecuta el script: node insert-initial-prompt.js
 
-La evaluaci+¦n se deber+í tomar en base a la rentabilidad de cada operaci+¦n tomando en cuenta que esta se obtiene de Venta-Costo
-
-=== ­ƒùä´©Å ESTRUCTURA DE DATOS ===
-
-Tabla: Tmp_AnalisisComercial_prueba
-
-Columnas disponibles:
-- mes, a+¦o, Fecha (datetime)
-- Venta (numeric) - Monto de la operaci+¦n
-- Costo (numeric) - Costo de la operaci+¦n
-- Markup (calculado) = Venta / Costo
-- [Linea Servicio] (varchar) - L+¡nea de servicio
-- origen_cotizado (varchar)
-- parametro_GEP (varchar) - SI/NO
-- ListaCostoEFC (varchar) - SI/NO
-- Rango_Operativo (varchar)
-- SECTOR (varchar)
-- DivisionNegocio (varchar)
-- documento (varchar)
-- [Codigo Cliente] (char) ÔÇô llave for+ínea tabla temporal_cliente
-
-
-Tabla: temporal_cliente
-- [Codigo Cliente] (char) ÔÇô llave principal
-- Cliente (varchar)
-- Sector (varchar)
-- Segmento (varchar)
-- [Grupo cliente] (varchar)
-
-
-=== ­ƒöì INSTRUCCIONES DE AN+üLISIS ===
-
-**Definici+¦n de combinaci+¦n comercial:**
-Se forma uniendo: [Linea Servicio] + origen_cotizado + parametro_GEP + ListaCostoEFC + Rango_Operativo + SECTOR + DivisionNegocio
-(NO usar Fecha ni documento para agrupar)
-
-**Filtros m+¡nimos:**
-- Solo analizar combinaciones con al menos 3 periodos de datos distintos
-- Considerar solo combinaciones con Venta > $1,000
-
-**Indicadores a calcular:**
-- Rentabilidad = Venta - Costo
-- Markup = Venta / Costo
-- Volumen_movil_3m: Venta acumulada de 3 meses
-- Participaci+¦n_anual: Proporci+¦n del volumen anual
-
-**Clasificaci+¦n estrat+®gica:**
-- RENTABLE: Markup > 1.28, Venta acumulada > $10,000, participaci+¦n > 5%
-- FUGA ESTRAT+ëGICA: Markup < 1.22 y Venta > $10,000
-- TESORO OCULTO: Markup > 1.29 y Venta < $5,000
-- REVISAR: Markup entre 1.22 y 1.29
-- NEUTRO: Todo lo dem+ís
-
-**Alertas a detectar:**
-­ƒÜ¿ Traslado de ahorro: parametro_GEP = "SI" o ListaCostoEFC = "SI" y Markup < 1.25
-ÔÜá´©Å Zona cr+¡tica: Rango 1-3 y Markup < 1.25
-­ƒôë Erosi+¦n de margen: Venta crece pero Markup cae
-­ƒôè Sector involucionando: Venta decrece sostenidamente
-
-**Consideraciones:**
-- Ignorar outliers positivos (ventas pico at+¡picas)
-- Considerar v+ílidos los montos negativos (notas de cr+®dito)
-- No evaluar por a+¦o calendario, sino por combinaci+¦n
-- Fecha y documento solo para ver evoluci+¦n, no para agrupar
-
-=== ­ƒôä FORMATO DE SALIDA ===
-
-**1. T+ìTULO EJECUTIVO**
-Breve y descriptivo, complementado con gr+íficas y una grilla resumen de datos
-
-**2. M+ëTRICAS CLAVE** (con emojis)
-­ƒÆ¦ Total Ventas: $X,XXX
-­ƒôè Markup Promedio: X.XX%
-­ƒôê Combinaciones Rentables: XX
-
-**3. CLASIFICACI+ôN DE COMBINACIONES**
-Presenta 2 ejemplos por tipo (RENTABLE, FUGA, TESORO, etc.)
-
-**4. ALERTAS DETECTADAS**
-Lista clara con datos reales de combinaciones afectadas
-
-**5. RECOMENDACIONES ACCIONABLES**
-Decisiones estrat+®gicas priorizadas con contexto y justificaci+¦n
-
-**6. CONCLUSI+ôN**
-Decisiones estrat+®gicas priorizadas para el comit+® directivo
-
-=== ­ƒÜ½ PROHIBICIONES ===
-- NO uses p+írrafos largos
-- NO uses lenguaje t+®cnico innecesario
-- S+ë CONCISO, VISUAL y EJECUTIVO
-- USA emojis para claridad visual
-
-Responde siempre en espa+¦ol con lenguaje ejecutivo.`;
+Mientras tanto, funcionamiento bÃ¡sico:
+- Eres un analista comercial que ayuda a analizar datos de ventas y rentabilidad.
+- Genera SQL vÃ¡lido para SQL Server usando las tablas y columnas del esquema proporcionado.
+- Responde en espaÃ±ol de forma clara y concisa.`;
   }
 
   getMCPTools() {
@@ -201,11 +114,11 @@ Responde siempre en espa+¦ol con lenguaje ejecutivo.`;
           properties: {
             query: {
               type: 'string',
-                description: 'Consulta SQL SELECT v+ílida'
+                description: 'Consulta SQL SELECT v+ï¿½lida'
             },
             params: {
               type: 'object',
-                description: 'Par+ímetros opcionales',
+                description: 'Par+ï¿½metros opcionales',
                 default: {}
             }
           },
@@ -223,7 +136,8 @@ Responde siempre en espa+¦ol con lenguaje ejecutivo.`;
     const {
       temperature = 0.1,
       model = this.model,
-      systemPromptOverride = null
+      systemPromptOverride = null,
+      toolsEnabled = true
     } = options;
 
     // Obtener contexto del MCP server (solo la primera vez)
@@ -236,167 +150,89 @@ Responde siempre en espa+¦ol con lenguaje ejecutivo.`;
         content: systemPromptOverride
       };
     } else if (conversationHistory.length === 0) {
-      console.log('­ƒöä Obteniendo contexto de BD desde MCP Server...');
+      console.log('ğŸ“Š Construyendo prompt con arquitectura de 3 capas...');
       
       try {
+        // ğŸ”· CAPA 1 + 2: Obtener ESQUEMA DINÃMICO + REGLAS SQL del MCP Server
         const promptResponse = await mcpClient.getPrompt('sql_assistant', {
           task: 'analysis'
         });
+        const esquemaDinamicoConReglas = promptResponse.messages[0].content.text;
+        console.log('âœ… Capa 1+2: Esquema dinÃ¡mico + Reglas SQL cargadas del MCP');
         
-<<<<<<< HEAD
-        systemPrompt = {
-          role: 'system',
-          content: `ANALISTA COMERCIAL SENIOR
-Experiencia: 50+ a+¦os en miner+¡a, energ+¡a, agroindustria, industria y construcci+¦n.
-Objetivo: Identificar patrones cr+¡ticos de rentabilidad y emitir recomendaciones ejecutivas.
-F+¦rmula base: Rentabilidad = Venta - Costo | Markup = Venta/Costo
-­ƒôè DATOS
-Tmp_AnalisisComercial_prueba:
-Temporales: mes, a+¦o, Fecha
-Financieros: Venta, Costo, Markup
-Dimensionales: [Linea Servicio], origen_cotizado, parametro_GEP (SI/NO), ListaCostoEFC (SI/NO), Rango_Operativo, SECTOR, DivisionNegocio, documento
-Relaci+¦n: [Codigo Cliente] ÔåÆ temporal_cliente
-temporal_cliente:[Codigo Cliente] (PK), Cliente, Sector, Segmento, [Grupo cliente]
-­ƒÄ» REGLAS
-Combinaci+¦n Comercial = [Linea Servicio] + origen_cotizado + parametro_GEP + ListaCostoEFC + Rango_Operativo + SECTOR + DivisionNegocio
-Filtros: Min 3 per+¡odos | Venta > $1,000
-KPIs: Rentabilidad, Markup, Volumen_movil_3m, Participaci+¦n_anual (% venta total a+¦o)
-Clasificaci+¦n:
-­ƒƒó RENTABLE: Markup > 1.28 + Venta acum. > $10K + Participaci+¦n > 5%
-­ƒö¦ FUGA: Markup < 1.22 + Venta > $10K
-­ƒÆÄ TESORO: Markup > 1.29 + Venta < $5K
-­ƒƒí REVISAR: Markup 1.22-1.29
-ÔÜ¬ NEUTRO: Resto
-Alertas:
-­ƒÜ¿ Traslado ahorro: (parametro_GEP="SI" O ListaCostoEFC="SI") Y Markup < 1.25
-ÔÜá´©Å Zona cr+¡tica: Rango 1-3 Y Markup < 1.25
-­ƒôë Erosi+¦n margen: Venta Ôåæ + Markup Ôåô (3+ meses)
-­ƒôè Involuci+¦n: Venta Ôåô sostenida (3+ meses)
-Notas: Aceptar negativos | Excluir outliers >3¤â | No agrupar por Fecha/documento
-­ƒôï ENTREGABLE
-1. T+ìTULO
-Hallazgo cr+¡tico en 1 l+¡nea
-2. M+ëTRICAS
-­ƒÆ¦ Total Ventas | ­ƒôè Markup Prom. | ­ƒôê Rentables | ÔÜá´©Å Alertas
-3. CLASIFICACI+ôN
-2 ejemplos/categor+¡a ÔåÆ Cliente, Sector, Markup, Venta, Insight (1 l+¡nea)
-4. ALERTAS
-Icono + Combinaci+¦n + Dato clave + Impacto (m+íx 2 l+¡neas/alerta)
-5. RECOMENDACIONES
-M+íx 5 acciones priorizadas con m+®trica objetivo
-6. CONCLUSI+ôN
-­ƒö¦ Riesgo alto | ­ƒƒí Atenci+¦n | ­ƒƒó Estable + decisi+¦n/acci+¦n
-7. VISUAL (OBLIGATORIO)
-Grilla:
- 
- 
-Plain Text
-Sector | L+¡nea | Markup | Venta | Rentab. | Estado | Alerta
-Gr+ífico 1: Barras horizontales - Rentabilidad prom. por Sector (colores: ­ƒƒó­ƒƒí­ƒö¦, valor en barra)
-Gr+ífico 2: L+¡nea - Markup prom. mensual (marcar Ôåù´©ÅÔåÿ´©Å, valor en punto)
-­ƒÜ½ PROHIBIDO
-P+írrafos >3 l+¡neas | Repetir datos | Omitir grilla/gr+íficos | Jerga t+®cnica
-Ô£à SIEMPRE
-Ejecutivo | Visual | Accionable | Espa+¦ol`;
-  }
-
-  getMCPTools() {
-    return [
-      {
-        type: 'function',
-        function: {
-        name: 'get_tables',
-          description: 'Lista todas las tablas disponibles en la base de datos',
-        parameters: {
-          type: 'object',
-          properties: {},
-          required: []
-          }
+        // ğŸ”· CAPA 3: Obtener REGLAS DE NEGOCIO desde BD (o fallback)
+        let reglasNegocio;
+        try {
+          reglasNegocio = await this.getPromptFromDB('analysis', null);
+          console.log('âœ… Capa 3a: Reglas de negocio (anÃ¡lisis) cargadas desde BD');
+        } catch (error) {
+          console.error('âŒ ERROR CRÃTICO: No se pudieron cargar reglas de negocio desde BD:', error.message);
+          console.error('âš ï¸ Las reglas de negocio DEBEN estar en la BD (CAPA 3). Ejecuta: node insert-initial-prompt.js');
+          console.warn('âš ï¸ Usando prompt mÃ­nimo de emergencia (NO RECOMENDADO para producciÃ³n)');
+          reglasNegocio = this.getDefaultPrompt();
         }
-      },
-      {
-        type: 'function',
-        function: {
-        name: 'describe_table',
-          description: 'Describe la estructura completa de una tabla',
-        parameters: {
-          type: 'object',
-          properties: {
-            table_name: {
-              type: 'string',
-                description: 'Nombre de la tabla'
-            }
-          },
-          required: ['table_name']
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-        name: 'execute_query',
-          description: 'Ejecuta una consulta SQL SELECT',
-        parameters: {
-          type: 'object',
-          properties: {
-            query: {
-              type: 'string',
-                description: 'Consulta SQL SELECT v+ílida'
-            },
-            params: {
-              type: 'object',
-                description: 'Par+ímetros opcionales',
-                default: {}
-            }
-          },
-          required: ['query']
-          }
-        }
-      }
-    ];
-  }
-
-  async chat(userMessage, conversationHistory = [], options = {}) {
-    const mcpClient = await this.getMCPClient();
-    
-    // Opciones por defecto
-    const {
-      temperature = 0.1,
-      model = this.model,
-      systemPromptOverride = null
-    } = options;
-
-    // Obtener contexto del MCP server (solo la primera vez)
-    let systemPrompt;
-    
-    // Si hay un system prompt override, usarlo
-    if (systemPromptOverride) {
-      systemPrompt = {
-        role: 'system',
-        content: systemPromptOverride
-      };
-    } else if (conversationHistory.length === 0) {
-      console.log('­ƒöä Obteniendo contexto de BD desde MCP Server...');
-      
-      try {
-        const promptResponse = await mcpClient.getPrompt('sql_assistant', {
-          task: 'analysis'
-        });
         
-        // ÔÜí Cargar prompt desde BD seg+¦n perfil del usuario
-        const promptContent = await this.getPromptFromDB('analysis', null);
+        // ğŸ”· CAPA 3b: Obtener REGLAS SQL DE NEGOCIO (comparaciÃ³n justa, etc.)
+        let reglasSQLNegocio = '';
+        try {
+          const sqlRules = await this.getPromptFromDB('sql_rules', null);
+          if (sqlRules && sqlRules.trim()) {
+            reglasSQLNegocio = sqlRules;
+            console.log('âœ… Capa 3b: Reglas SQL de negocio (comparaciÃ³n justa) cargadas desde BD');
+          } else {
+            console.log('â„¹ï¸ No hay reglas SQL de negocio configuradas en BD');
+          }
+        } catch (error) {
+          console.warn('âš ï¸ No se pudieron cargar reglas SQL de negocio:', error.message);
+          // No es crÃ­tico, puede continuar sin ellas
+        }
+        
+        // ğŸ”· COMBINAR las 3 capas + reglas SQL de negocio
+        let promptCompleto = `${esquemaDinamicoConReglas}
+
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+=== ğŸ“Š REGLAS DE NEGOCIO Y ANÃLISIS COMERCIAL ===
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+${reglasNegocio}`;
+
+        // Agregar reglas SQL de negocio si existen
+        if (reglasSQLNegocio && reglasSQLNegocio.trim()) {
+          promptCompleto += `
+
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+=== âš¡ REGLAS SQL DE NEGOCIO (EDITABLES) ===
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+${reglasSQLNegocio}`;
+        }
+
+        promptCompleto += `
+
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+âš ï¸ CRÃTICO: Usa SOLO las columnas listadas en el esquema de arriba.
+Si una columna NO estÃ¡ en la lista, NO EXISTE en la base de datos.
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•`;
         
         systemPrompt = {
           role: 'system',
-          content: promptContent
+          content: promptCompleto
         };
         
-        console.log('Ô£à Contexto de an+ílisis cargado');
+        const capasUsadas = ['CAPA 1: Esquema', 'CAPA 2: Reglas SQL tÃ©cnicas'];
+        if (reglasNegocio) capasUsadas.push('CAPA 3a: Reglas de negocio');
+        if (reglasSQLNegocio) capasUsadas.push('CAPA 3b: Reglas SQL de negocio (EDITABLE)');
+        console.log(`âœ… Prompt combinado: ${capasUsadas.join(' + ')}`);
+        
     } catch (error) {
-        console.error('ÔÜá´©Å No se pudo cargar contexto de BD:', error.message);
+        console.error('âŒ ERROR CRÃTICO construyendo prompt:', error.message);
+        console.error('âš ï¸ Las reglas de negocio DEBEN estar en la BD (CAPA 3). Ejecuta: node insert-initial-prompt.js');
+        console.warn('âš ï¸ Usando prompt mÃ­nimo de emergencia (NO RECOMENDADO para producciÃ³n)');
+        
+        // Fallback: Prompt mÃ­nimo de emergencia
         systemPrompt = {
           role: 'system',
-          content: 'Eres un asistente de base de datos SQL Server.'
+          content: this.getDefaultPrompt()
         };
       }
     }
@@ -405,16 +241,22 @@ Ejecutivo | Visual | Accionable | Espa+¦ol`;
       ? [systemPrompt, ...conversationHistory, { role: 'user', content: userMessage }]
       : [...conversationHistory, { role: 'user', content: userMessage }];
 
-    console.log(`\n­ƒÆ¼ Usuario: ${userMessage}`);
+    console.log(`\nğŸ’¬ Usuario: ${userMessage}`);
 
     // Primera llamada a OpenAI
-    let response = await this.client.chat.completions.create({
+    const firstCallParams = {
       model: model,
       messages: messages,
-      tools: this.getMCPTools(),
-      tool_choice: 'auto',
       temperature: temperature
-    });
+    };
+    
+    // Solo incluir tools si estÃ¡n habilitados
+    if (toolsEnabled) {
+      firstCallParams.tools = this.getMCPTools();
+      firstCallParams.tool_choice = 'auto';
+    }
+    
+    let response = await this.client.chat.completions.create(firstCallParams);
 
     let assistantMessage = response.choices[0].message;
     
@@ -422,9 +264,9 @@ Ejecutivo | Visual | Accionable | Espa+¦ol`;
     let maxIterations = 5;
     let iteration = 0;
 
-    while (assistantMessage.tool_calls && iteration < maxIterations) {
+    while (toolsEnabled && assistantMessage.tool_calls && iteration < maxIterations) {
       iteration++;
-      console.log(`\n­ƒöä Iteraci+¦n ${iteration} - ${assistantMessage.tool_calls.length} herramienta(s)`);
+      console.log(`\nğŸ”„ IteraciÃ³n ${iteration} - ${assistantMessage.tool_calls.length} herramienta(s)`);
 
       messages.push(assistantMessage);
 
@@ -432,7 +274,7 @@ Ejecutivo | Visual | Accionable | Espa+¦ol`;
         const functionName = toolCall.function.name;
         const functionArgs = JSON.parse(toolCall.function.arguments);
 
-        console.log(`­ƒöº Ejecutando: ${functionName}`);
+        console.log(`ğŸ”§ Ejecutando: ${functionName}`);
         console.log(`   Argumentos:`, functionArgs);
 
         let toolResult;
@@ -444,10 +286,10 @@ Ejecutivo | Visual | Accionable | Espa+¦ol`;
           const preview = resultStr.length > 200 
             ? resultStr.substring(0, 200) + '...' 
             : resultStr;
-          console.log(`   Ô£à Resultado:`, preview);
+          console.log(`   âœ… Resultado:`, preview);
           
         } catch (error) {
-          console.error(`   ÔØî Error:`, error.message);
+          console.error(`   âŒ Error:`, error.message);
           toolResult = { 
             error: error.message,
             hint: 'Verifica que la consulta SQL use los nombres de columnas correctos'
@@ -463,18 +305,24 @@ Ejecutivo | Visual | Accionable | Espa+¦ol`;
       }
 
       // Siguiente llamada a OpenAI
-      response = await this.client.chat.completions.create({
+      const nextCallParams = {
         model: model,
         messages: messages,
-        tools: this.getMCPTools(),
-        tool_choice: 'auto',
         temperature: temperature
-      });
+      };
+      
+      // Solo incluir tools si estÃ¡n habilitados
+      if (toolsEnabled) {
+        nextCallParams.tools = this.getMCPTools();
+        nextCallParams.tool_choice = 'auto';
+      }
+      
+      response = await this.client.chat.completions.create(nextCallParams);
 
       assistantMessage = response.choices[0].message;
     }
 
-    console.log(`\n­ƒñû Asistente: ${assistantMessage.content}\n`);
+    console.log(`\nğŸ¤– Asistente: ${assistantMessage.content}\n`);
 
     return {
       type: 'text',

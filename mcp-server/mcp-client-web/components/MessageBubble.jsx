@@ -45,19 +45,19 @@ export default function MessageBubble({ message }) {
             isUser 
               ? 'message-user' 
               : needsClarification
-              ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 text-gray-800'
+              ? 'bg-gray-50 border-2 border-gray-200 text-gray-800'
               : 'message-assistant'
           }`}
         >
           {/* Icono de aclaración */}
           {needsClarification && (
-            <div className="flex items-center space-x-2 mb-3 pb-3 border-b border-amber-200">
-              <div className="p-2 bg-amber-100 rounded-full">
-                <HelpCircle className="w-5 h-5 text-amber-600" />
+            <div className="flex items-center space-x-2 mb-3 pb-3 border-b border-gray-300">
+              <div className="p-2 bg-gray-200 rounded-full">
+                <HelpCircle className="w-5 h-5 text-gray-600" />
               </div>
               <div>
-                <p className="font-semibold text-amber-900">Necesito más información</p>
-                <p className="text-xs text-amber-700">Por favor, especifica el período para continuar</p>
+                <p className="font-semibold text-gray-800">Necesito más información</p>
+                <p className="text-xs text-gray-600">Por favor, especifica el período para continuar</p>
               </div>
             </div>
           )}

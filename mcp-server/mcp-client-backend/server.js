@@ -34,6 +34,7 @@ class MCPServer {
     this.authService = new AuthService();
     this.dbService = new DatabaseService();
     this.mcpClient = new MCPClient(process.env.MCP_HOST, process.env.MCP_PORT);
+    this.isShuttingDown = false; // Flag para prevenir múltiples shutdowns
   }
 
   async initialize() {
@@ -248,6 +249,13 @@ class MCPServer {
   }
 
   async gracefulShutdown() {
+    // Prevenir múltiples llamadas al shutdown
+    if (this.isShuttingDown) {
+      console.log('⚠️ Shutdown ya en proceso, ignorando...');
+      return;
+    }
+    
+    this.isShuttingDown = true;
     console.log('🛑 Iniciando cierre graceful del servidor...');
     
     if (this.server) {
