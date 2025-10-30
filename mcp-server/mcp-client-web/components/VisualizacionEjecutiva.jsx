@@ -45,6 +45,64 @@ function TarjetasComparativoMensual({ comp }) {
   );
 }
 
+// KPIs para comparativo (totales por año y crecimiento)
+function KPIsComparativo({ totales, comp }) {
+  if (!totales || !comp) return null;
+  const { anio_base, anio_comp } = comp;
+  const totalBase = Number(totales[anio_base] || 0);
+  const totalComp = Number(totales[anio_comp] || 0);
+  const crecimiento = totalBase ? ((totalComp - totalBase) / totalBase) * 100 : (totalComp > 0 ? 100 : 0);
+
+  return (
+    <div className="grid gap-3 mb-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+      <TarjetaKPI titulo={`Total ${anio_base}`} valor={formatMoneda(totalBase)} color="blue" />
+      <TarjetaKPI titulo={`Total ${anio_comp}`} valor={formatMoneda(totalComp)} color="green" />
+      <TarjetaKPI titulo={`Crecimiento`} valor={formatPorcentaje(crecimiento)} color={crecimiento >= 0 ? 'green' : 'orange'} />
+    </div>
+  );
+}
+
+// Gráfico de líneas comparativo simple en SVG (2024 vs 2025)
+function LineChartComparativo({ comp }) {
+  if (!comp || !comp.filas || comp.filas.length === 0) return null;
+  const width = 900; const height = 260; const padding = 40;
+  const dataX = comp.filas.map((f, i) => i);
+  const y1Vals = comp.filas.map(f => Number(f.y1 || 0));
+  const y2Vals = comp.filas.map(f => Number(f.y2 || 0));
+  const maxY = Math.max(1, ...y1Vals, ...y2Vals);
+  const xStep = (width - padding * 2) / Math.max(1, comp.filas.length - 1);
+
+  const toPath = (vals) => vals.map((v, i) => {
+    const x = padding + xStep * i;
+    const y = height - padding - (v / maxY) * (height - padding * 2);
+    return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+  }).join(' ');
+
+  const path1 = toPath(y1Vals);
+  const path2 = toPath(y2Vals);
+
+  return (
+    <div className="bg-white rounded-xl p-5 shadow-md border border-gray-100">
+      <div className="flex items-center gap-4 mb-3">
+        <div className="text-lg font-bold text-gray-800">Evolución mensual {comp.anio_base} vs {comp.anio_comp}</div>
+        <div className="text-xs text-gray-500">Escala relativa al máximo</div>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`}> 
+        {/* Ejes simples */}
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e5e7eb" />
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#e5e7eb" />
+        {/* Líneas */}
+        <path d={path1} fill="none" stroke="#2563eb" strokeWidth="2" />
+        <path d={path2} fill="none" stroke="#10b981" strokeWidth="2" />
+      </svg>
+      <div className="flex items-center gap-6 mt-3 text-sm">
+        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-blue-600 inline-block" />{comp.anio_base}</div>
+        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" />{comp.anio_comp}</div>
+      </div>
+    </div>
+  );
+}
+
 
 // Tarjeta KPI Grande (estilo ejecutivo con colores suaves)
 function TarjetaKPI({ titulo, valor, color = "blue", icono }) {
@@ -475,6 +533,14 @@ export default function VisualizacionEjecutiva({ metadata }) {
         </h2>
       )}
 
+      {/* KPIs comparativo si hay datos por año */}
+      {metadata.datos_para_graficos?.comparativo_mensual && metadata.datos_para_graficos?.totales_por_anio && (
+        <KPIsComparativo 
+          totales={metadata.datos_para_graficos.totales_por_anio}
+          comp={metadata.datos_para_graficos.comparativo_mensual}
+        />
+      )}
+
       {/* KPIs Principales - Todas las tarjetas en una sola línea */}
       {puedeMostrarKPIs ? (
         <ResumenEjecutivo 
@@ -508,10 +574,32 @@ export default function VisualizacionEjecutiva({ metadata }) {
         </div>
       )}
 
+      {/* Línea comparativa mensual */}
+      {metadata.datos_para_graficos?.comparativo_mensual && (
+        <LineChartComparativo comp={metadata.datos_para_graficos.comparativo_mensual} />
+      )}
+
       {/* Comparativo mensual YYYY vs YYYY */}
       {metadata.datos_para_graficos?.comparativo_mensual && (
         <TarjetasComparativoMensual comp={metadata.datos_para_graficos.comparativo_mensual} />
       )}
+
+      {/* Barras por totales (Mayor a Menor) */}
+      {metadata.datos_para_graficos?.totales_por_anio && (() => {
+        const t = metadata.datos_para_graficos.totales_por_anio;
+        const comp = metadata.datos_para_graficos.comparativo_mensual;
+        if (!comp) return null;
+        const datosTotales = [
+          { mes: String(comp.anio_base), año: comp.anio_base, total: Number(t[comp.anio_base] || 0) },
+          { mes: String(comp.anio_comp), año: comp.anio_comp, total: Number(t[comp.anio_comp] || 0) }
+        ];
+        return (
+          <GraficoBarras datos={datosTotales} titulo="Ventas por Periodo (Mayor a Menor)" nombreMetrica={nombre_metrica} />
+        );
+      })()}
+
+      {/* Comparativo mensual YYYY vs YYYY */}
+      
     </div>
   );
 }
