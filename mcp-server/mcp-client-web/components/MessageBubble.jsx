@@ -12,6 +12,26 @@ export default function MessageBubble({ message }) {
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
   const needsClarification = message.needsClarification || false;
+  const hayComparativo = isAssistant && !!message.metadata?.visualizacion?.datos_para_graficos?.comparativo_mensual;
+
+  // Filtrar solo el "detalle por mes" del texto (mantener el resto del análisis)
+  const getDisplayContent = () => {
+    if (!hayComparativo || !message.content) return message.content;
+    try {
+      const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const monthPattern = new RegExp(`^\n?\s*(?:[-•▪️·]?\s*)?(?:${months.join('|')})\\s+\\d{4}:`, 'i');
+      const lines = String(message.content).split(/\n/);
+      const filtered = lines.filter(line => {
+        if (/detalle\s+por\s+mes/i.test(line)) return false; // remover encabezado
+        if (monthPattern.test(line)) return false; // remover línea de mes
+        return true;
+      });
+      // Limpiar múltiplos saltos de línea consecutivos
+      return filtered.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    } catch {
+      return message.content;
+    }
+  };
 
   const copyToClipboard = async (text) => {
     try {
@@ -112,7 +132,7 @@ export default function MessageBubble({ message }) {
                   ),
                 }}
               >
-                {message.content}
+                {getDisplayContent()}
               </ReactMarkdown>
             ) : (
               <p className="whitespace-pre-wrap">{message.content}</p>

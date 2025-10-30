@@ -66,11 +66,15 @@ function KPIsComparativo({ totales, comp }) {
 function LineChartComparativo({ comp }) {
   if (!comp || !comp.filas || comp.filas.length === 0) return null;
   const width = 900; const height = 260; const padding = 40;
-  const dataX = comp.filas.map((f, i) => i);
-  const y1Vals = comp.filas.map(f => Number(f.y1 || 0));
-  const y2Vals = comp.filas.map(f => Number(f.y2 || 0));
+  const filasOrdenadas = [...comp.filas].sort((a,b) => a.mes_num - b.mes_num);
+  const y1Vals = filasOrdenadas.map(f => Number(f.y1 || 0));
+  const y2Vals = filasOrdenadas.map(f => Number(f.y2 || 0));
   const maxY = Math.max(1, ...y1Vals, ...y2Vals);
-  const xStep = (width - padding * 2) / Math.max(1, comp.filas.length - 1);
+  const xStep = (width - padding * 2) / Math.max(1, filasOrdenadas.length - 1);
+  const etiquetas = filasOrdenadas.map(f => {
+    const nombre = f.mes_nombre || '';
+    return nombre.slice(0,3); // Ene, Feb, ...
+  });
 
   const toPath = (vals) => vals.map((v, i) => {
     const x = padding + xStep * i;
@@ -94,11 +98,89 @@ function LineChartComparativo({ comp }) {
         {/* Líneas */}
         <path d={path1} fill="none" stroke="#2563eb" strokeWidth="2" />
         <path d={path2} fill="none" stroke="#10b981" strokeWidth="2" />
+        {/* Etiquetas de meses */}
+        {etiquetas.map((m, i) => {
+          const x = padding + xStep * i;
+          const y = height - padding + 14;
+          return (
+            <text key={i} x={x} y={y} textAnchor="middle" fontSize="10" fill="#6b7280">
+              {m}
+            </text>
+          );
+        })}
       </svg>
       <div className="flex items-center gap-6 mt-3 text-sm">
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-blue-600 inline-block" />{comp.anio_base}</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" />{comp.anio_comp}</div>
       </div>
+    </div>
+  );
+}
+
+// Tarjetas: "Mes Año: S/ monto (±% vs promedio) 🟢/🔴" para cada año
+function TarjetasVsPromedio({ comp, totales }) {
+  if (!comp || !comp.filas || comp.filas.length === 0) return null;
+  const { anio_base, anio_comp, filas } = comp;
+
+  // Construir listas por año
+  const byYear = { [anio_base]: [], [anio_comp]: [] };
+  filas.forEach(f => {
+    byYear[anio_base].push({ mes_num: f.mes_num, mes_nombre: f.mes_nombre, valor: Number(f.y1 || 0) });
+    byYear[anio_comp].push({ mes_num: f.mes_num, mes_nombre: f.mes_nombre, valor: Number(f.y2 || 0) });
+  });
+
+  const buildCards = (year) => {
+    const items = (byYear[year] || []).filter(i => i.valor > 0);
+    if (items.length === 0) return [];
+    const suma = items.reduce((a, b) => a + b.valor, 0);
+    // Promedio de meses disponibles; si deseas forzar 12 meses, usa (totales?.[year]||suma)/12
+    const promedio = suma / items.length;
+    return items.sort((a, b) => a.mes_num - b.mes_num).map(i => {
+      const diffPct = promedio ? ((i.valor - promedio) / promedio) * 100 : 0;
+      const up = diffPct >= 0;
+      return {
+        key: `${i.mes_num}-${year}`,
+        label: `${i.mes_nombre} ${year}`,
+        valor: i.valor,
+        pct: diffPct,
+        up
+      };
+    });
+  };
+
+  const cardsBase = buildCards(anio_base);
+  const cardsComp = buildCards(anio_comp);
+
+  const Card = ({ c }) => (
+    <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+      <div className="text-sm font-semibold text-gray-800 mb-1">{c.label}</div>
+      <div className="text-sm text-gray-700">{formatMoneda(c.valor)} (<span className={c.up ? 'text-green-600' : 'text-red-600'}>
+        {c.up ? '▲ ' : '▼ '}{formatPorcentaje(Math.abs(c.pct))} vs promedio
+      </span>) {c.up ? '🟢' : '🔴'}</div>
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-xl p-5 shadow-md border border-gray-100">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">Análisis Mensual (vs promedio del año)</h3>
+      {/* Año base */}
+      {cardsBase.length > 0 && (
+        <>
+          <div className="text-xs font-semibold text-gray-600 mb-2">{anio_base}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+            {cardsBase.map(c => <Card key={c.key} c={c} />)}
+          </div>
+        </>
+      )}
+      {/* Año comparado */}
+      {cardsComp.length > 0 && (
+        <>
+          <div className="text-xs font-semibold text-gray-600 mb-2">{anio_comp}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {cardsComp.map(c => <Card key={c.key} c={c} />)}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -516,6 +598,7 @@ export default function VisualizacionEjecutiva({ metadata }) {
 
   // Detectar si hay serie temporal disponible para graficar
   const haySerieTemporal = Array.isArray(datos_para_graficos?.meses) && datos_para_graficos.meses.length > 0;
+  const hayComparativo = !!metadata.datos_para_graficos?.comparativo_mensual;
 
   // Totales básicos para decidir si mostramos KPIs
   const totalParaDecision = datos_para_graficos?.total_acumulado || datos_para_graficos?.total_ventas_real || datos_para_graficos?.total || 0;
@@ -534,7 +617,7 @@ export default function VisualizacionEjecutiva({ metadata }) {
       )}
 
       {/* KPIs comparativo si hay datos por año */}
-      {metadata.datos_para_graficos?.comparativo_mensual && metadata.datos_para_graficos?.totales_por_anio && (
+      {hayComparativo && metadata.datos_para_graficos?.totales_por_anio && (
         <KPIsComparativo 
           totales={metadata.datos_para_graficos.totales_por_anio}
           comp={metadata.datos_para_graficos.comparativo_mensual}
@@ -542,7 +625,7 @@ export default function VisualizacionEjecutiva({ metadata }) {
       )}
 
       {/* KPIs Principales - Todas las tarjetas en una sola línea */}
-      {puedeMostrarKPIs ? (
+      {!hayComparativo && puedeMostrarKPIs ? (
         <ResumenEjecutivo 
           datos={datos_para_graficos}
           mejor={datos_para_graficos?.mejor_mes}
@@ -550,14 +633,16 @@ export default function VisualizacionEjecutiva({ metadata }) {
           contexto={metadata.contexto || 'periodos'}
         />
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
-          No hay datos suficientes para graficar este análisis. Si buscas una comparativa, especifica los periodos (por ejemplo: "ventas 2024 vs 2025") y, si aplica, el sector.
-        </div>
+        !hayComparativo && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+            No hay datos suficientes para graficar este análisis. Si buscas una comparativa, especifica los periodos (por ejemplo: "ventas 2024 vs 2025") y, si aplica, el sector.
+          </div>
+        )
       )}
 
       {/* Layout de 2 columnas: Izquierda = Análisis Mensual/Clientes, Derecha = Gráfico */}
       {/* SIEMPRE mostrar si hay datos (meses o clientes), independientemente del flag mostrar_tendencia_temporal */}
-      {haySerieTemporal && (
+      {haySerieTemporal && !hayComparativo && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
           {/* Análisis Mensual/Clientes con % de cambio - Misma altura que el gráfico */}
           <AnalisisMensual 
@@ -579,13 +664,15 @@ export default function VisualizacionEjecutiva({ metadata }) {
         <LineChartComparativo comp={metadata.datos_para_graficos.comparativo_mensual} />
       )}
 
+      {/* (Opcional) Tarjetas vs promedio del año retiradas para evitar redundancia */}
+
       {/* Comparativo mensual YYYY vs YYYY */}
-      {metadata.datos_para_graficos?.comparativo_mensual && (
+      {hayComparativo && (
         <TarjetasComparativoMensual comp={metadata.datos_para_graficos.comparativo_mensual} />
       )}
 
       {/* Barras por totales (Mayor a Menor) */}
-      {metadata.datos_para_graficos?.totales_por_anio && (() => {
+      {metadata.datos_para_graficos?.totales_por_anio && hayComparativo && (() => {
         const t = metadata.datos_para_graficos.totales_por_anio;
         const comp = metadata.datos_para_graficos.comparativo_mensual;
         if (!comp) return null;

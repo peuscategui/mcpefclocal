@@ -3092,20 +3092,21 @@ Total Anual: S/ 15.2M
               const y1 = uniqueYears[0];
               const y2 = uniqueYears[1];
               const sqlMensual = `
-                WITH d AS (
-                  SELECT YEAR(tac.fecha) as Anio, DATENAME(MONTH, tac.fecha) as MesNombre, MONTH(tac.fecha) as MesNum,
-                         SUM(tac.Venta) as Ventas
+                SELECT d.MesNum, d.MesNombre,
+                       MAX(CASE WHEN d.Anio = ${y1} THEN d.Ventas END) AS Ventas_${y1},
+                       MAX(CASE WHEN d.Anio = ${y2} THEN d.Ventas END) AS Ventas_${y2}
+                FROM (
+                  SELECT YEAR(tac.fecha) AS Anio,
+                         DATENAME(MONTH, tac.fecha) AS MesNombre,
+                         MONTH(tac.fecha) AS MesNum,
+                         SUM(tac.Venta) AS Ventas
                   FROM Tmp_AnalisisComercial_prueba tac
-                  ${sectorSQLFilter ? `WHERE tac.SECTOR LIKE '${sectorSQLFilter}'` : ''}
-                  AND YEAR(tac.fecha) IN (${y1}, ${y2})
+                  WHERE YEAR(tac.fecha) IN (${y1}, ${y2})
+                  ${sectorSQLFilter ? `AND tac.SECTOR LIKE '${sectorSQLFilter}'` : ''}
                   GROUP BY YEAR(tac.fecha), DATENAME(MONTH, tac.fecha), MONTH(tac.fecha)
-                )
-                SELECT MesNum, MesNombre,
-                       MAX(CASE WHEN Anio=${y1} THEN Ventas END) as Ventas_${y1},
-                       MAX(CASE WHEN Anio=${y2} THEN Ventas END) as Ventas_${y2}
-                FROM d
-                GROUP BY MesNum, MesNombre
-                ORDER BY MesNum`;
+                ) d
+                GROUP BY d.MesNum, d.MesNombre
+                ORDER BY d.MesNum`;
 
               const rMensual = await mcpClient.callTool('execute_query', { query: sqlMensual });
               if (rMensual && rMensual.content && rMensual.content[0]) {
@@ -3130,8 +3131,8 @@ Total Anual: S/ 15.2M
               const sqlTotales = `
                 SELECT YEAR(tac.fecha) as Anio, SUM(tac.Venta) as Ventas
                 FROM Tmp_AnalisisComercial_prueba tac
-                ${sectorSQLFilter ? `WHERE tac.SECTOR LIKE '${sectorSQLFilter}'` : ''}
-                AND YEAR(tac.fecha) IN (${y1}, ${y2})
+                WHERE YEAR(tac.fecha) IN (${y1}, ${y2})
+                ${sectorSQLFilter ? `AND tac.SECTOR LIKE '${sectorSQLFilter}'` : ''}
                 GROUP BY YEAR(tac.fecha)`;
               const rTot = await mcpClient.callTool('execute_query', { query: sqlTotales });
               if (rTot && rTot.content && rTot.content[0]) {
