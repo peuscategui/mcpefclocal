@@ -560,12 +560,12 @@ function construirMetadataVisualizacion(datos, tipoAnalisis, contextoTemporal, m
   
   // ✅ Construir datos_para_graficos con los valores calculados (antes del return final)
   const datos_para_graficos = periodoUnico ? {
-    // Datos para periodo único
+      // Datos para periodo único
     total_ventas: registros[0]?.[metricaPrincipal] || registros[0]?.Ventas || 0,
     transacciones: registros[0]?.Transacciones || 1,
     promedio: registros[0]?.PromedioVenta || registros[0]?.[metricaPrincipal] || 0,
-    mes: registros[0]?.Mes || contextoTemporal.nombre_mes_anterior,
-    año: registros[0]?.Año || contextoTemporal.año_mes_anterior,
+      mes: registros[0]?.Mes || contextoTemporal.nombre_mes_anterior,
+      año: registros[0]?.Año || contextoTemporal.año_mes_anterior,
     periodo: `${registros[0]?.Mes || contextoTemporal.nombre_mes_anterior} ${registros[0]?.Año || contextoTemporal.año_mes_anterior}`,
     // ✅ SIEMPRE incluir total_acumulado y promedio_mensual (usando valores calculados)
     total_acumulado: (totalVentas !== null && totalVentas !== undefined && !isNaN(totalVentas)) 
@@ -576,27 +576,27 @@ function construirMetadataVisualizacion(datos, tipoAnalisis, contextoTemporal, m
       : (parseFloat(registros[0]?.PromedioVenta) || parseFloat(registros[0]?.[metricaPrincipal]) || 0)
   } : {
     // Datos para múltiples periodos (ORDENADOS por monto de MAYOR a MENOR)
-    meses: registros.map(d => ({
+      meses: registros.map(d => ({
       mes: d.Mes || d.NombreMes || d.Cliente,
-      año: d.Año,
+        año: d.Año,
       total: d[metricaPrincipal] || d.Ventas || 0,
       transacciones: d.Transacciones || 1,
       promedio: d.PromedioVenta || d[metricaPrincipal] || 0
     })).sort((a, b) => b.total - a.total),  // ✅ Ordenar de mayor a menor
-    mejor_mes: mejorMes ? {
+      mejor_mes: mejorMes ? {
       mes: mejorMes.Mes || mejorMes.NombreMes || mejorMes.Cliente || '—',
       nombre_mes_completo: mejorMes.Mes || mejorMes.NombreMes || '—',
       año: mejorMes.Año || null,
       total: mejorMes[metricaPrincipal] || mejorMes.Ventas || 0,
       transacciones: mejorMes.Transacciones || 1
-    } : null,
-    peor_mes: peorMes ? {
+      } : null,
+      peor_mes: peorMes ? {
       mes: peorMes.Mes || peorMes.NombreMes || peorMes.Cliente || '—',
       nombre_mes_completo: peorMes.Mes || peorMes.NombreMes || '—',
       año: peorMes.Año || null,
       total: peorMes[metricaPrincipal] || peorMes.Ventas || 0,
       transacciones: peorMes.Transacciones || 1
-    } : null,
+      } : null,
     total_acumulado: (totalVentas !== null && totalVentas !== undefined && !isNaN(totalVentas)) ? totalVentas : 0,
     total_transacciones: totalTransacciones || 0,
     promedio_mensual: (promedioMensual !== null && promedioMensual !== undefined && !isNaN(promedioMensual)) ? promedioMensual : 0,
@@ -652,6 +652,7 @@ function construirMetadataVisualizacion(datos, tipoAnalisis, contextoTemporal, m
 // Función para detectar el tipo de análisis requerido
 function detectarTipoAnalisis(mensajeUsuario) {
   const mensajeLower = mensajeUsuario.toLowerCase();
+  const tienePatronVsAnios = /\b20\d{2}\s*vs\s*20\d{2}\b/i.test(mensajeUsuario);
   
   // Palabras que indican análisis comparativo (múltiples periodos)
   const palabrasComparativas = [
@@ -661,7 +662,7 @@ function detectarTipoAnalisis(mensajeUsuario) {
     'trimestre', 'semestre', 'histórico', 'historia'
   ];
   
-  const esComparativo = palabrasComparativas.some(p => mensajeLower.includes(p));
+  const esComparativo = tienePatronVsAnios || palabrasComparativas.some(p => mensajeLower.includes(p));
   
   if (esComparativo) {
     console.log('📊 Tipo de análisis: COMPARATIVO (múltiples periodos)');
@@ -679,6 +680,7 @@ function detectarTipoAnalisis(mensajeUsuario) {
   
   // Consultas de un año específico
   if ((mensajeLower.includes('2024') || mensajeLower.includes('2025')) && 
+      !tienePatronVsAnios && 
       !mensajeLower.includes('vs') && 
       !mensajeLower.includes('comparar')) {
     console.log('📊 Tipo de análisis: AÑO ESPECÍFICO');
@@ -737,6 +739,116 @@ function requiereDatosDeBD(message) {
   return requiereDatos;
 }
 
+// ✅ Función para generar mensajes de aclaración dinámicos usando OpenAI (CAPA 3)
+async function generarMensajeAclaracion(contexto, sectoresCandidatos, dbService, openaiService) {
+  try {
+    console.log('🤖 Generando mensaje de aclaración con OpenAI...');
+    
+    // Obtener reglas de negocio desde BD (CAPA 3)
+    let reglasNegocio = '';
+    if (dbService && dbService.promptService) {
+      try {
+        reglasNegocio = await dbService.promptService.getActivePrompt('analysis', null) || '';
+        console.log('✅ Reglas de negocio obtenidas desde BD (CAPA 3)');
+      } catch (error) {
+        console.warn('⚠️ No se pudieron cargar reglas de negocio:', error.message);
+      }
+    }
+    
+    // Construir contexto para OpenAI
+    const sectoresLista = sectoresCandidatos && sectoresCandidatos.length > 0
+      ? sectoresCandidatos.map((s, i) => `${i + 1}. ${s}`).join('\n')
+      : 'No se encontraron sectores disponibles';
+    
+    // Construir prompt contextual según el tipo de aclaración
+    let promptAclaracion = '';
+    
+    if (contexto.tipo && (contexto.tipo.includes('sector') || contexto.tipo === 'sector_ambiguo')) {
+      // Aclaración sobre sectores
+      promptAclaracion = `Eres un asistente comercial que ayuda a analizar datos de ventas y rentabilidad por sectores.
+
+${reglasNegocio ? `\nREGLAS DE COMUNICACIÓN (desde base de datos - CAPA 3):\n${reglasNegocio}\n` : ''}
+
+SITUACIÓN ACTUAL:
+Necesitas pedir aclaración al usuario sobre el sector. Contexto:
+
+${JSON.stringify(contexto, null, 2)}
+
+SECTORES DISPONIBLES EN LA BASE DE DATOS:
+${sectoresLista}
+
+${contexto.tipo === 'sector_detectado_sin_palabra' ? 
+  `NOTA IMPORTANTE: Detecté el patrón "${contexto.patron_detectado}" en la consulta del usuario, pero no mencionó explícitamente la palabra "sector". El sector candidato es "${contexto.sector_candidato}". Debes confirmar si este es el sector correcto de manera amable.` : ''}
+
+${contexto.tipo === 'sector_no_encontrado' ? 
+  `NOTA IMPORTANTE: El usuario mencionó "${contexto.patron_detectado}" pero no coincide con ningún sector en la base de datos. Podría estar refiriéndose a otra cosa (año, código, etc.). Pide aclaración de manera amable y proporciona ejemplos claros.` : ''}
+
+INSTRUCCIONES:
+1. Sé claro, amable y profesional
+2. Explica brevemente por qué necesitas aclaración sobre el sector
+3. Lista los sectores disponibles de forma clara
+4. Proporciona 2-3 ejemplos concretos de cómo el usuario puede reformular su consulta incluyendo el sector exacto
+5. Mantén el mensaje conciso pero completo
+6. Usa formato markdown para mejor legibilidad
+
+Genera el mensaje de aclaración sobre el sector:`;
+    } else {
+      // Aclaración sobre periodos u otra información faltante
+      promptAclaracion = `Eres un asistente comercial que ayuda a analizar datos de ventas y rentabilidad.
+
+${reglasNegocio ? `\nREGLAS DE COMUNICACIÓN (desde base de datos - CAPA 3):\n${reglasNegocio}\n` : ''}
+
+SITUACIÓN ACTUAL:
+Necesitas pedir aclaración al usuario sobre información faltante. Contexto:
+
+${JSON.stringify(contexto, null, 2)}
+
+INSTRUCCIONES:
+1. Sé claro, amable y profesional
+2. Explica brevemente qué información falta
+3. Proporciona 3-4 ejemplos concretos de cómo el usuario puede reformular su consulta
+4. Mantén el mensaje conciso pero completo
+5. Usa formato markdown para mejor legibilidad
+
+Genera el mensaje de aclaración:`;
+    }
+    
+    // Usar OpenAI para generar el mensaje
+    const respuesta = await openaiService.chat(
+      promptAclaracion,
+      [],
+      {
+        temperature: 0.3,
+        model: 'gpt-4-turbo-preview',
+        toolsEnabled: false // No necesitamos herramientas para generar mensajes
+      }
+    );
+    
+    const mensajeGenerado = respuesta.choices?.[0]?.message?.content || respuesta.content || 'Por favor, especifica el sector de tu consulta.';
+    console.log('✅ Mensaje de aclaración generado por OpenAI');
+    
+    return mensajeGenerado;
+    
+  } catch (error) {
+    console.error('❌ Error generando mensaje de aclaración con OpenAI:', error.message);
+    // Fallback: mensaje genérico
+    const sectoresLista = sectoresCandidatos && sectoresCandidatos.length > 0
+      ? sectoresCandidatos.map((s, i) => `${i + 1}. **${s}**`).join('\n')
+      : 'No se encontraron sectores disponibles';
+    
+    return `🔍 **Sector no especificado claramente**
+
+Por favor, especifica el sector exacto de tu consulta. Sectores disponibles:
+
+${sectoresLista}
+
+**Ejemplos válidos:**
+• "Clientes con mayor rentabilidad sector 2. Minería 2 2025"
+• "Ventas del sector 1. Minería 1 en 2025"
+• "Rentabilidad sector 4. EFC Corporativo 2025"`;
+  }
+}
+
 // Función para obtener sectores válidos desde la BD (con cache en memoria)
 let sectoresValidosCache = null;
 async function obtenerSectoresValidos(mcpClient) {
@@ -778,16 +890,177 @@ async function detectarSectorExacto(message, mcpClient) {
   const sectoresValidos = await obtenerSectoresValidos(mcpClient);
   console.log(`📋 Sectores válidos encontrados: ${sectoresValidos.join(', ')}`);
   
-  // Intentar detectar mención de sector con formato "sector X. Nombre X" o "sector Nombre"
-  const sectorMatchCompleto = message.match(/sector\s+(\d+\.?\s*)?(.+?)(?:\s+\d+|\s*$)/i);
+  // ✅ PRIORIDAD 1: Detectar con palabra "sector" explícita (MÁS CONFIABLE)
+  // Mejorado: busca "sector" seguido de "N. Nombre" o solo "Nombre"
+  // Captura patrones como: "sector 4. EFC Corporativo 2025" o "sector 2. Minería 2"
+  const sectorMatchCompleto = message.match(/sector\s+(\d+\.\s+[A-Za-zÁÉÍÓÚáéíóúñÑ\s]+?)(?:\s+\d{4}|$)/i) ||
+                              message.match(/sector\s+(\d+\.\s*[A-Za-zÁÉÍÓÚáéíóúñÑ\s]+?)(?:\s+202[0-9]|$)/i) ||
+                              message.match(/sector\s+([A-Za-zÁÉÍÓÚáéíóúñÑ0-9\.\s]+?)(?:\s+202[0-9]|\s+\d{4}|$)/i);
   
-  console.log(`🔍 sectorMatchCompleto:`, sectorMatchCompleto ? `"${sectorMatchCompleto[0]}"` : 'null');
+  // ✅ PRIORIDAD 2: Detectar patrones tipo "N. Nombre" SIN palabra "sector" (SOLO SI NO HAY "sector" explícito)
+  const patronSectorSinPalabra = !msg.includes('sector') && message.match(/\b(\d+)\.\s*([^\d]+?)(?:\s+\d+|$|\s+2024|\s+2025|\s+2026)/i);
   
-  // ✅ NUEVO: Detectar menciones genéricas de "minería" sin número específico
+  console.log(`🔍 sectorMatchCompleto (con palabra "sector"):`, sectorMatchCompleto ? `"${sectorMatchCompleto[0] || sectorMatchCompleto[1]}"` : 'null');
+  console.log(`🔍 patronSectorSinPalabra (sin palabra "sector"):`, patronSectorSinPalabra ? `"${patronSectorSinPalabra[0]}"` : 'null');
+  
+  // ✅ MEJORA 3: Detectar menciones genéricas de tipos de sectores conocidos
   const mencionaMinería = msg.includes('minería') || msg.includes('mineria');
-  console.log(`🔍 mencionaMinería: ${mencionaMinería}`);
+  const mencionaConstruccion = msg.includes('construcción') || msg.includes('construccion');
+  const mencionaEFC = msg.includes('efc corporativo') || msg.includes('efc');
+  const mencionaPlatino = msg.includes('platino');
   
-  // ✅ CASO ESPECIAL: Si menciona "sector Minería" (sin número), también debe preguntar
+  console.log(`🔍 menciones genéricas: minería=${mencionaMinería}, construcción=${mencionaConstruccion}, efc=${mencionaEFC}, platino=${mencionaPlatino}`);
+  
+  // ✅ PRIORIDAD MÁXIMA: Si hay mención EXPLÍCITA de "sector" + patrón, validarlo directamente
+  if (sectorMatchCompleto) {
+    // Extraer el texto del sector del match
+    let sectorTexto = sectorMatchCompleto[1] || (sectorMatchCompleto[0] ? sectorMatchCompleto[0].replace(/^sector\s+/i, '').trim() : '');
+    
+    if (!sectorTexto && sectorMatchCompleto[0]) {
+      // Si sectorMatchCompleto[1] no existe, extraer del match completo
+      sectorTexto = sectorMatchCompleto[0].replace(/^sector\s+/i, '').trim();
+    }
+    
+    if (sectorTexto) {
+      console.log(`✅ Mención explícita de sector detectada: "${sectorTexto}"`);
+      
+      // Limpiar el texto: remover años, espacios extra, etc.
+      sectorTexto = sectorTexto.replace(/\s+(2024|2025|2026)\s*$/i, '').trim();
+      
+      // Buscar coincidencia EXACTA primero
+      let sectorEncontrado = sectoresValidos.find(s => {
+        const sLower = s.toLowerCase().trim();
+        const textoLower = sectorTexto.toLowerCase().trim();
+        
+        // Coincidencia exacta (caso insensible)
+        if (sLower === textoLower) return true;
+        
+        // Coincidencia si el texto mencionado está contenido en el sector válido
+        // Ej: "4. EFC Corporativo" debe coincidir con "4. EFC Corporativo"
+        if (sLower.includes(textoLower) || textoLower.includes(sLower)) {
+          // Verificar que tenga el número
+          const numeroEnTexto = textoLower.match(/(\d+)/);
+          const numeroEnSector = sLower.match(/(\d+)/);
+          if (numeroEnTexto && numeroEnSector && numeroEnTexto[1] === numeroEnSector[1]) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+      
+      if (sectorEncontrado) {
+        console.log(`✅ Sector válido encontrado (coincidencia exacta): "${sectorEncontrado}" - USANDO DIRECTAMENTE SIN PREGUNTAR`);
+    return {
+          sector: sectorEncontrado,
+          filtroSQL: `%${sectorEncontrado}%`,
+          requiereAclaracion: false
+        };
+      }
+      
+      // Si no hay coincidencia exacta, buscar por número y nombre parcial
+      console.log(`⚠️ Sector mencionado pero sin coincidencia exacta, buscando por número y nombre...`);
+      const numeroMatch = sectorTexto.match(/(\d+)/);
+      const nombreMatch = sectorTexto.replace(/\d+/g, '').trim().toLowerCase();
+      
+      if (numeroMatch && nombreMatch) {
+        const coincidenciasParciales = sectoresValidos.filter(s => {
+          const sLower = s.toLowerCase();
+          // Debe contener el número Y parte del nombre
+          return sLower.includes(numeroMatch[1]) && 
+                 (nombreMatch.length >= 3 ? sLower.includes(nombreMatch.substring(0, 3)) : true);
+        });
+        
+        if (coincidenciasParciales.length === 1) {
+          console.log(`✅ Sector encontrado por coincidencia parcial única: "${coincidenciasParciales[0]}" - USANDO SIN PREGUNTAR`);
+    return {
+            sector: coincidenciasParciales[0],
+            filtroSQL: `%${coincidenciasParciales[0]}%`,
+            requiereAclaracion: false
+          };
+        } else if (coincidenciasParciales.length === 0) {
+          console.log(`❌ No se encontró coincidencia para: "${sectorTexto}"`);
+          // Continuar con el flujo normal (puede ser otra cosa)
+        } else {
+          console.log(`⚠️ Múltiples coincidencias parciales: ${coincidenciasParciales.join(', ')}`);
+          return {
+            sector: null,
+            filtroSQL: null,
+            requiereAclaracion: true,
+            sectoresCandidatos: coincidenciasParciales,
+            contextoAclaracion: {
+              tipo: 'sector_ambiguo',
+              patron_detectado: sectorTexto
+            }
+          };
+        }
+      }
+    }
+  }
+  
+  // ✅ Si encontramos un patrón tipo "N. Nombre" (sin palabra sector), validarlo contra BD
+  if (!msg.includes('sector') && patronSectorSinPalabra) {
+    const numeroMatch = patronSectorSinPalabra[1];
+    const nombreMatch = patronSectorSinPalabra[2].trim();
+    
+    console.log(`⚠️ Patrón detectado sin palabra "sector": "${numeroMatch}. ${nombreMatch}"`);
+    
+    // Buscar coincidencias en sectores válidos
+    const posiblesCoincidencias = sectoresValidos.filter(s => {
+      const sLower = s.toLowerCase();
+      return sLower.includes(numeroMatch) && 
+             sLower.includes(nombreMatch.toLowerCase());
+    });
+    
+    if (posiblesCoincidencias.length === 1) {
+      // Coincidencia única: podría ser válido, pero preguntar para confirmar
+      console.log(`⚠️ Sector potencial detectado: "${posiblesCoincidencias[0]}" - REQUIERE CONFIRMACIÓN`);
+    return {
+        sector: null,
+        filtroSQL: null,
+        requiereAclaracion: true,
+        sectoresCandidatos: posiblesCoincidencias,
+        contextoAclaracion: {
+          tipo: 'sector_detectado_sin_palabra',
+          patron_detectado: `${numeroMatch}. ${nombreMatch}`,
+          sector_candidato: posiblesCoincidencias[0]
+        }
+      };
+    } else if (posiblesCoincidencias.length > 1) {
+      // Múltiples coincidencias: preguntar
+      return {
+        sector: null,
+        filtroSQL: null,
+        requiereAclaracion: true,
+        sectoresCandidatos: posiblesCoincidencias,
+        contextoAclaracion: {
+          tipo: 'sector_ambiguo',
+          patron_detectado: `${numeroMatch}. ${nombreMatch}`
+        }
+      };
+    } else {
+      // No hay coincidencias: podría ser otra cosa (año, código, etc.) - PEDIR ACLARACIÓN
+      return {
+        sector: null,
+        filtroSQL: null,
+        requiereAclaracion: true,
+        sectoresCandidatos: sectoresValidos,
+        contextoAclaracion: {
+          tipo: 'sector_no_encontrado',
+          patron_detectado: `${numeroMatch}. ${nombreMatch}`,
+          mensaje_usuario: message
+        }
+      };
+    }
+  }
+  
+  if (!sectorMatchCompleto && !mencionaMinería && !mencionaConstruccion && !mencionaEFC && !mencionaPlatino) {
+    // Si no hay mención de sector ni tipos conocidos, retornar null (puede ser consulta general)
+    console.log(`✅ No hay mención de sector, continuando sin filtro`);
+    return { sector: null, filtroSQL: null, requiereAclaracion: false };
+  }
+  
+  // ✅ CASO ESPECIAL: Si menciona "sector Minería" o tipo genérico sin número, preguntar
   const mencionaSectorGenerico = sectorMatchCompleto && sectorMatchCompleto[0] && 
                                    !sectorMatchCompleto[1] && // No tiene número
                                    (sectorMatchCompleto[2].toLowerCase().includes('minería') || 
@@ -795,44 +1068,47 @@ async function detectarSectorExacto(message, mcpClient) {
   
   console.log(`🔍 mencionaSectorGenerico: ${mencionaSectorGenerico}`);
   
-  if (!sectorMatchCompleto && !mencionaMinería) {
-    // Si no hay mención de sector ni minería, retornar null (puede ser consulta general)
-    console.log(`✅ No hay mención de sector, continuando sin filtro`);
-    return { sector: null, filtroSQL: null, requiereAclaracion: false };
+  // ✅ Si menciona "sector Minería/Construcción/EFC" (sin número) o solo el tipo genérico, buscar todos los que coincidan
+  let sectoresGenericos = [];
+  if ((!sectorMatchCompleto && mencionaMinería) || mencionaSectorGenerico) {
+    sectoresGenericos = sectoresValidos.filter(s => s.toLowerCase().includes('minería') || s.toLowerCase().includes('mineria'));
+  } else if (mencionaConstruccion) {
+    sectoresGenericos = sectoresValidos.filter(s => s.toLowerCase().includes('construcción') || s.toLowerCase().includes('construccion'));
+  } else if (mencionaEFC) {
+    sectoresGenericos = sectoresValidos.filter(s => s.toLowerCase().includes('efc'));
+  } else if (mencionaPlatino) {
+    sectoresGenericos = sectoresValidos.filter(s => s.toLowerCase().includes('platino'));
   }
   
-  // ✅ Si menciona "sector Minería" (sin número) o solo "minería" genérico, preguntar
-  if ((!sectorMatchCompleto && mencionaMinería) || mencionaSectorGenerico) {
+  if (sectoresGenericos.length > 0) {
     console.log(`⚠️ Sector genérico detectado, buscando coincidencias...`);
-    // Buscar todos los sectores que contengan "minería"
-    const sectoresMinería = sectoresValidos.filter(s => s.toLowerCase().includes('minería') || s.toLowerCase().includes('mineria'));
-    console.log(`📋 Sectores de minería encontrados: ${sectoresMinería.join(', ')}`);
+    console.log(`📋 Sectores encontrados: ${sectoresGenericos.join(', ')}`);
     
-    if (sectoresMinería.length > 1) {
-      // Hay múltiples sectores de minería: requiere aclaración
+    if (sectoresGenericos.length > 1) {
+      // Hay múltiples sectores: requiere aclaración
       console.log(`❓ Múltiples sectores encontrados, requiere aclaración`);
+    return {
+        sector: null,
+        filtroSQL: null,
+        requiereAclaracion: true,
+        sectoresCandidatos: sectoresGenericos,
+        contextoAclaracion: {
+          tipo: 'sector_generico_multiple',
+          tipo_mencionado: mencionaMinería ? 'minería' : mencionaConstruccion ? 'construcción' : mencionaEFC ? 'efc' : 'platino'
+        }
+      };
+    } else if (sectoresGenericos.length === 1) {
+      // Un solo sector: SIEMPRE preguntar para confirmar (ser conservador)
+      console.log(`⚠️ Un solo sector encontrado, pero PEDIR CONFIRMACIÓN por seguridad`);
       return {
         sector: null,
         filtroSQL: null,
         requiereAclaracion: true,
-        sectoresCandidatos: sectoresMinería
-      };
-    } else if (sectoresMinería.length === 1) {
-      // Solo hay un sector de minería: usarlo automáticamente
-      console.log(`✅ Un solo sector encontrado, usando: "${sectoresMinería[0]}"`);
-      return {
-        sector: sectoresMinería[0],
-        filtroSQL: `%${sectoresMinería[0]}%`,
-        requiereAclaracion: false
-      };
-    } else {
-      // No se encontraron sectores de minería: requiere aclaración
-      console.log(`❓ No se encontraron sectores de minería, requiere aclaración`);
-      return {
-        sector: null,
-        filtroSQL: null,
-        requiereAclaracion: true,
-        sectoresCandidatos: sectoresValidos
+        sectoresCandidatos: sectoresGenericos,
+        contextoAclaracion: {
+          tipo: 'sector_unico_potencial',
+          sector_candidato: sectoresGenericos[0]
+        }
       };
     }
   }
@@ -872,7 +1148,7 @@ async function detectarSectorExacto(message, mcpClient) {
         sectorDetectado = coincidenciasParciales[0];
       } else if (coincidenciasParciales.length > 1) {
         // Múltiples coincidencias: requiere aclaración
-        return {
+    return {
           sector: null,
           filtroSQL: null,
           requiereAclaracion: true,
@@ -901,7 +1177,8 @@ async function detectarSectorExacto(message, mcpClient) {
 }
 
 // Función para detectar si falta información crítica en la consulta (MEJORADA)
-function detectarInformacionFaltante(message) {
+// ✅ CAPA 3: Ahora usa OpenAI para generar mensajes dinámicos
+async function detectarInformacionFaltante(message, dbService, openaiService) {
   const msg = message.toLowerCase().trim();
   
   console.log('🔍 detectarInformacionFaltante - Mensaje:', msg);
@@ -922,7 +1199,7 @@ function detectarInformacionFaltante(message) {
   
   if (noRequiereAclaracion.some(exclusion => msg.includes(exclusion))) {
     console.log('✅ Consulta específica, no requiere aclaración');
-    return null;
+  return null;
   }
   
   // ✅ Detectar consultas GENÉRICAS que requieren período temporal
@@ -942,26 +1219,42 @@ function detectarInformacionFaltante(message) {
   
   console.log('❗ Consulta GENÉRICA detectada, requiere aclaración de periodo');
   
-  // Generar pregunta específica según el tipo de consulta
+  // Determinar tipo de aclaración necesaria
+  let tipoAclaracion = 'consulta_general';
   if (msg.includes('comparar') || msg.includes('comparativo') || msg.includes('vs')) {
-    return {
-      tipo: 'comparativo',
-      pregunta: '📅 **¿Qué periodos deseas comparar?**\n\nEjemplos:\n• "2024 vs 2025 (hasta octubre)"\n• "Enero 2024 vs Enero 2025"\n• "Q3 2024 vs Q3 2025"'
-    };
+    tipoAclaracion = 'comparativo';
+  } else if (msg.includes('rentabilidad')) {
+    tipoAclaracion = 'rentabilidad';
   }
   
-  if (msg.includes('rentabilidad')) {
+  // ✅ CAPA 3: Generar mensaje dinámico usando OpenAI
+  const contextoAclaracion = {
+    tipo: tipoAclaracion,
+    mensaje_usuario: message,
+    informacion_faltante: 'periodo_temporal',
+    tipo_consulta: tipoAclaracion
+  };
+  
+  try {
+    const mensajeGenerado = await generarMensajeAclaracion(
+      contextoAclaracion,
+      [], // No hay sectores candidatos para este caso
+      dbService,
+      openaiService
+    );
+    
     return {
-      tipo: 'rentabilidad',
-      pregunta: '📅 **¿De qué periodo deseas ver la rentabilidad?**\n\nEjemplos:\n• "Rentabilidad del 2025"\n• "Rentabilidad del último trimestre"\n• "Rentabilidad de enero a octubre 2025"'
+      tipo: tipoAclaracion,
+      pregunta: mensajeGenerado
+    };
+  } catch (error) {
+    console.error('❌ Error generando mensaje de aclaración:', error.message);
+    // Fallback genérico
+    return {
+      tipo: tipoAclaracion,
+      pregunta: '📅 **¿De qué periodo deseas la información?**\n\nEjemplos:\n• "Del 2025"\n• "Del último mes"\n• "De octubre 2025"\n• "De enero a octubre 2025"'
     };
   }
-  
-  // Consulta genérica de ventas o análisis
-    return {
-      tipo: 'consulta_general',
-    pregunta: '📅 **¿De qué periodo deseas la información?**\n\nEjemplos:\n• "Del 2025"\n• "Del último mes"\n• "De octubre 2025"\n• "De enero a octubre 2025"'
-    };
 }
 
 // ⚠️ FUNCIÓN DEPRECADA: Ahora OpenAI genera el SQL dinámicamente
@@ -1250,7 +1543,8 @@ router.post('/chat', validateInput(chatSchema), async (req, res) => {
       console.log('🔧 Consulta de datos detectada - generando análisis automático');
       
       // ✅ PASO 0: Verificar si falta información crítica (HABILITADO)
-      const infoFaltante = detectarInformacionFaltante(message);
+      // ✅ CAPA 3: Ahora usa OpenAI para generar mensaje dinámico
+      const infoFaltante = await detectarInformacionFaltante(message, dbService, openaiService);
       if (infoFaltante) {
         console.log('❓ Información faltante detectada:', infoFaltante.tipo);
         return res.json({
@@ -1281,21 +1575,40 @@ router.post('/chat', validateInput(chatSchema), async (req, res) => {
         console.log('='.repeat(80) + '\n');
         
         if (validacionSectorGlobal.requiereAclaracion) {
-          console.log('❓ Sector requiere aclaración - RETORNANDO PREGUNTA AL USUARIO');
-          const sectoresLista = validacionSectorGlobal.sectoresCandidatos && validacionSectorGlobal.sectoresCandidatos.length > 0
-            ? validacionSectorGlobal.sectoresCandidatos.map((s, i) => `${i + 1}. **${s}**`).join('\n')
-            : 'No se encontraron sectores en la base de datos';
+          console.log('❓ Sector requiere aclaración - GENERANDO MENSAJE CON OPENAI');
           
-          const preguntaSector = `🔍 **Sector no especificado claramente o no encontrado**
+          // ✅ CAPA 3: Generar mensaje de aclaración usando OpenAI con reglas de BD
+          const contextoAclaracion = validacionSectorGlobal.contextoAclaracion || {
+            tipo: 'sector_ambiguo',
+            mensaje_usuario: message
+          };
+          
+          let preguntaSector;
+          try {
+            preguntaSector = await generarMensajeAclaracion(
+              contextoAclaracion,
+              validacionSectorGlobal.sectoresCandidatos,
+              dbService,
+              openaiService
+            );
+          } catch (errorGeneracion) {
+            console.error('❌ Error generando mensaje, usando fallback:', errorGeneracion.message);
+            // Fallback seguro
+            const sectoresLista = validacionSectorGlobal.sectoresCandidatos && validacionSectorGlobal.sectoresCandidatos.length > 0
+              ? validacionSectorGlobal.sectoresCandidatos.map((s, i) => `${i + 1}. **${s}**`).join('\n')
+              : 'No se encontraron sectores en la base de datos';
+            
+            preguntaSector = `🔍 **Sector no especificado claramente**
 
-Por favor, especifica el sector exacto de tu consulta. Sectores disponibles en la base de datos:
+Por favor, especifica el sector exacto de tu consulta. Sectores disponibles:
 
 ${sectoresLista}
 
 **Ejemplos válidos:**
 • "Clientes con mayor rentabilidad sector 2. Minería 2 2025"
 • "Ventas del sector 1. Minería 1 en 2025"
-• "Rentabilidad sector 2. Minería 2 enero 2025"`;
+• "Rentabilidad sector 4. EFC Corporativo 2025"`;
+          }
           
           return res.json({
             success: true,
@@ -2704,6 +3017,137 @@ Total Anual: S/ 15.2M
               }
             }
             
+          // ✅ Fallback comparativo año vs año (p.ej., "ventas 2024 vs 2025")
+          // Si el análisis es comparativo y no tenemos datos para gráficos,
+          // agregamos un dataset simple por AÑO para que el frontend dibuje 2 barras
+          try {
+            const añosEnMensaje = (message.match(/\b(202[0-9])\b/g) || []).map(a => parseInt(a, 10));
+            const añosUnicos = Array.from(new Set(añosEnMensaje));
+            // Preparar comparativo simple si es análisis comparativo y hay al menos 2 años en el mensaje.
+            // Lo aplicamos si no hay meses, o si hay menos de 2 puntos, o si los labels no parecen ser años.
+            const labelsActuales = (metadataVisualizacion.datos_para_graficos.meses || []).map(x => String(x.mes || ''));
+            const labelsParecenAnios = labelsActuales.every(l => /^\d{4}$/.test(l));
+            const tienePatronVsAnios = /\b20\d{2}\s*vs\s*20\d{2}\b/i.test(message);
+            const necesitaComparativoSimple = (tipoAnalisis === 'analisis_comparativo' || tienePatronVsAnios)
+              && añosUnicos.length >= 2
+              && (
+                !metadataVisualizacion.datos_para_graficos.meses ||
+                metadataVisualizacion.datos_para_graficos.meses.length < 2 ||
+                !labelsParecenAnios
+              );
+
+            if (necesitaComparativoSimple) {
+              const y1 = añosUnicos[0];
+              const y2 = añosUnicos[1];
+              console.log(`📊 Preparando comparativo simple por año: ${y1} vs ${y2}`);
+
+              const sqlComparativoAnios = `SELECT 
+                YEAR(tac.fecha) as Año,
+                SUM(tac.Venta) as Ventas
+              FROM Tmp_AnalisisComercial_prueba tac
+              ${sectorSQLFilter ? `WHERE tac.SECTOR LIKE '${sectorSQLFilter}' AND YEAR(tac.fecha) IN (${y1}, ${y2})` : `WHERE YEAR(tac.fecha) IN (${y1}, ${y2})`}
+              GROUP BY YEAR(tac.fecha)
+              ORDER BY YEAR(tac.fecha)`;
+
+              const resultadoComparativo = await mcpClient.callTool('execute_query', { query: sqlComparativoAnios });
+              if (resultadoComparativo && resultadoComparativo.content && resultadoComparativo.content[0]) {
+                const dataComp = JSON.parse(resultadoComparativo.content[0].text);
+                if (dataComp && dataComp.data) {
+                  const mesesComparativo = dataComp.data.map(r => ({
+                    mes: String(r.Año),
+                    año: r.Año,
+                    total: parseFloat(r.Ventas) || 0,
+                    transacciones: 1,
+                    promedio: parseFloat(r.Ventas) || 0
+                  }));
+
+                  if (!metadataVisualizacion.datos_para_graficos) {
+                    metadataVisualizacion.datos_para_graficos = {};
+                  }
+                  metadataVisualizacion.datos_para_graficos.meses = mesesComparativo;
+
+                  // Totales básicos para KPI
+                  const totalComp = mesesComparativo.reduce((acc, x) => acc + (x.total || 0), 0);
+                  metadataVisualizacion.datos_para_graficos.total_acumulado = totalComp;
+                  metadataVisualizacion.datos_para_graficos.promedio_mensual = totalComp / mesesComparativo.length;
+                  metadataVisualizacion.visualizaciones_recomendadas = {
+                    ...(metadataVisualizacion.visualizaciones_recomendadas || {}),
+                    mostrar_grafico_barras: true,
+                    mostrar_tendencia_temporal: false
+                  };
+
+                  console.log(`✅ Comparativo simple por año preparado (${mesesComparativo.length} barras)`);
+                }
+              }
+            }
+          } catch (errorComp) {
+            console.warn('⚠️ No se pudo preparar comparativo simple por año:', errorComp.message);
+          }
+
+          // ✅ COMPARATIVO MENSUAL DETALLADO (YYYY vs YYYY) si hay patrón de años
+          try {
+            const years = (message.match(/\b(202[0-9])\b/g) || []).map(a => parseInt(a, 10));
+            const uniqueYears = Array.from(new Set(years)).slice(0, 2).sort();
+            if (uniqueYears.length === 2) {
+              const y1 = uniqueYears[0];
+              const y2 = uniqueYears[1];
+              const sqlMensual = `
+                WITH d AS (
+                  SELECT YEAR(tac.fecha) as Anio, DATENAME(MONTH, tac.fecha) as MesNombre, MONTH(tac.fecha) as MesNum,
+                         SUM(tac.Venta) as Ventas
+                  FROM Tmp_AnalisisComercial_prueba tac
+                  ${sectorSQLFilter ? `WHERE tac.SECTOR LIKE '${sectorSQLFilter}'` : ''}
+                  AND YEAR(tac.fecha) IN (${y1}, ${y2})
+                  GROUP BY YEAR(tac.fecha), DATENAME(MONTH, tac.fecha), MONTH(tac.fecha)
+                )
+                SELECT MesNum, MesNombre,
+                       MAX(CASE WHEN Anio=${y1} THEN Ventas END) as Ventas_${y1},
+                       MAX(CASE WHEN Anio=${y2} THEN Ventas END) as Ventas_${y2}
+                FROM d
+                GROUP BY MesNum, MesNombre
+                ORDER BY MesNum`;
+
+              const rMensual = await mcpClient.callTool('execute_query', { query: sqlMensual });
+              if (rMensual && rMensual.content && rMensual.content[0]) {
+                const dataMensual = JSON.parse(rMensual.content[0].text).data || [];
+                const comparativo = dataMensual.map(r => {
+                  const v1 = parseFloat(r[`Ventas_${y1}`] || 0);
+                  const v2 = parseFloat(r[`Ventas_${y2}`] || 0);
+                  const delta = v1 ? ((v2 - v1) / v1) * 100 : (v2 > 0 ? 100 : 0);
+                  return { mes_num: r.MesNum, mes_nombre: r.MesNombre, y1: v1, y2: v2, delta_pct: isFinite(delta) ? delta : 0 };
+                });
+                if (!metadataVisualizacion.datos_para_graficos) {
+                  metadataVisualizacion.datos_para_graficos = {};
+                }
+                metadataVisualizacion.datos_para_graficos.comparativo_mensual = {
+                  anio_base: y1,
+                  anio_comp: y2,
+                  filas: comparativo
+                };
+              }
+
+              // Totales por año para el texto/KPI
+              const sqlTotales = `
+                SELECT YEAR(tac.fecha) as Anio, SUM(tac.Venta) as Ventas
+                FROM Tmp_AnalisisComercial_prueba tac
+                ${sectorSQLFilter ? `WHERE tac.SECTOR LIKE '${sectorSQLFilter}'` : ''}
+                AND YEAR(tac.fecha) IN (${y1}, ${y2})
+                GROUP BY YEAR(tac.fecha)`;
+              const rTot = await mcpClient.callTool('execute_query', { query: sqlTotales });
+              if (rTot && rTot.content && rTot.content[0]) {
+                const dataTot = JSON.parse(rTot.content[0].text).data || [];
+                const totalY1 = parseFloat((dataTot.find(x => x.Anio === y1)?.Ventas) || 0);
+                const totalY2 = parseFloat((dataTot.find(x => x.Anio === y2)?.Ventas) || 0);
+                if (!metadataVisualizacion.datos_para_graficos) {
+                  metadataVisualizacion.datos_para_graficos = {};
+                }
+                metadataVisualizacion.datos_para_graficos.totales_por_anio = { [y1]: totalY1, [y2]: totalY2 };
+              }
+            }
+          } catch (errorCompMensual) {
+            console.warn('⚠️ No se pudo preparar comparativo mensual:', errorCompMensual.message);
+          }
+
             // ✅ CALCULAR VARIACIÓN DE MARGEN DE CLIENTES vs PERIODO ANTERIOR
             // Solo para consultas de clientes con rentabilidad y año específico
             if (esConsultaClientes && esConsultaRentabilidadMejorMes && añoMencionadoMejorMes && sectorSQLFilter) {

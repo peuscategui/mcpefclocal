@@ -14,6 +14,37 @@ function formatPorcentaje(valor) {
   if (!valor) return '0%';
   return `${Number(valor).toFixed(1)}%`;
 }
+// Tarjetas comparativas mensuales (YYYY vs YYYY)
+function TarjetasComparativoMensual({ comp }) {
+  if (!comp || !comp.filas || comp.filas.length === 0) return null;
+  const { anio_base, anio_comp, filas } = comp;
+  return (
+    <div className="bg-white rounded-xl p-5 shadow-md border border-gray-100">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">📊 Comparativo Mensual {anio_base} vs {anio_comp}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filas.map((f, i) => {
+          const up = (f.delta_pct || 0) > 0;
+          const neutral = (f.delta_pct || 0) === 0;
+          return (
+            <div key={i} className="rounded-lg border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-1">{f.mes_nombre}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm">
+                  <div className="text-gray-700">{anio_base}: <b>{formatMoneda(f.y1)}</b></div>
+                  <div className="text-gray-700">{anio_comp}: <b>{formatMoneda(f.y2)}</b></div>
+                </div>
+                <div className={`text-sm font-bold ${neutral ? 'text-gray-600' : (up ? 'text-green-600' : 'text-red-600')}`}>
+                  {neutral ? '—' : (up ? '↑' : '↓')} {formatPorcentaje(f.delta_pct)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 
 // Tarjeta KPI Grande (estilo ejecutivo con colores suaves)
 function TarjetaKPI({ titulo, valor, color = "blue", icono }) {
@@ -425,6 +456,16 @@ export default function VisualizacionEjecutiva({ metadata }) {
     contexto: metadata.contexto
   });
 
+  // Detectar si hay serie temporal disponible para graficar
+  const haySerieTemporal = Array.isArray(datos_para_graficos?.meses) && datos_para_graficos.meses.length > 0;
+
+  // Totales básicos para decidir si mostramos KPIs
+  const totalParaDecision = datos_para_graficos?.total_acumulado || datos_para_graficos?.total_ventas_real || datos_para_graficos?.total || 0;
+  const promedioParaDecision = datos_para_graficos?.promedio_mensual || datos_para_graficos?.promedio || 0;
+
+  // Mostrar visualizaciones solo si hay datos (serie o KPIs con valor)
+  const puedeMostrarKPIs = haySerieTemporal || (Number(totalParaDecision) > 0 || Number(promedioParaDecision) > 0);
+
   return (
     <div className="my-4 space-y-4">
       {/* Título Principal - Solo texto, sin tarjeta */}
@@ -435,16 +476,22 @@ export default function VisualizacionEjecutiva({ metadata }) {
       )}
 
       {/* KPIs Principales - Todas las tarjetas en una sola línea */}
-      <ResumenEjecutivo 
-        datos={datos_para_graficos}
-        mejor={datos_para_graficos?.mejor_mes}
-        peor={datos_para_graficos?.peor_mes}
-        contexto={metadata.contexto || 'periodos'}
-      />
+      {puedeMostrarKPIs ? (
+        <ResumenEjecutivo 
+          datos={datos_para_graficos}
+          mejor={datos_para_graficos?.mejor_mes}
+          peor={datos_para_graficos?.peor_mes}
+          contexto={metadata.contexto || 'periodos'}
+        />
+      ) : (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+          No hay datos suficientes para graficar este análisis. Si buscas una comparativa, especifica los periodos (por ejemplo: "ventas 2024 vs 2025") y, si aplica, el sector.
+        </div>
+      )}
 
       {/* Layout de 2 columnas: Izquierda = Análisis Mensual/Clientes, Derecha = Gráfico */}
       {/* SIEMPRE mostrar si hay datos (meses o clientes), independientemente del flag mostrar_tendencia_temporal */}
-      {datos_para_graficos?.meses && datos_para_graficos.meses.length > 0 && (
+      {haySerieTemporal && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
           {/* Análisis Mensual/Clientes con % de cambio - Misma altura que el gráfico */}
           <AnalisisMensual 
@@ -459,6 +506,11 @@ export default function VisualizacionEjecutiva({ metadata }) {
             nombreMetrica={nombre_metrica}
           />
         </div>
+      )}
+
+      {/* Comparativo mensual YYYY vs YYYY */}
+      {metadata.datos_para_graficos?.comparativo_mensual && (
+        <TarjetasComparativoMensual comp={metadata.datos_para_graficos.comparativo_mensual} />
       )}
     </div>
   );
